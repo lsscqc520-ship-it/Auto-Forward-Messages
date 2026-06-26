@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>同城实时选妃中心</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: #0d1117; color: #fff; font-family: sans-serif; padding-bottom: 30px; }
+        .header { background: linear-gradient(135deg, #1f2937, #111827); padding: 15px; display: flex; align-items: center; border-bottom: 2px solid #f59e0b; position: sticky; top: 0; z-index: 100; }
+        .back-btn { color: #f59e0b; font-size: 20px; font-weight: bold; text-decoration: none; margin-right: 15px; cursor: pointer; }
+        .title { font-size: 18px; font-weight: bold; background: linear-gradient(to right, #fff, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .location-bar { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); margin: 12px; padding: 10px; border-radius: 8px; font-size: 13px; color: #fbbf24; display: flex; justify-content: space-between; }
+        .pulse { width: 8px; height: 8px; background: #10b981; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px #10b981; animation: blink 1.5s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
+        .girls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 12px; }
+        .girl-card { background: #1f2937; border-radius: 12px; overflow: hidden; border: 1px solid #374151; position: relative; }
+        .girl-img { width: 100%; height: 210px; object-fit: cover; }
+        .tag { position: absolute; top: 8px; left: 8px; background: rgba(239, 68, 68, 0.85); color: #fff; font-size: 11px; padding: 3px 6px; border-radius: 4px; font-weight: bold; }
+        .dist { position: absolute; top: 8px; right: 8px; background: rgba(0, 0, 0, 0.6); color: #fbbf24; font-size: 11px; padding: 3px 6px; border-radius: 4px; }
+        .girl-info { padding: 10px; }
+        .girl-name { font-size: 15px; font-weight: bold; margin-bottom: 4px; color: #fff; }
+        .girl-meta { font-size: 12px; color: #9ca3af; margin-bottom: 8px; display: flex; gap: 6px; }
+        .match-btn { width: 100%; background: linear-gradient(to right, #f59e0b, #d97706); color: #000; border: none; padding: 8px 0; border-radius: 6px; font-weight: bold; font-size: 13px; cursor: pointer; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: #1f2937; border: 2px solid #f59e0b; border-radius: 16px; padding: 25px; width: 100%; max-width: 340px; text-align: center; }
+        .modal-title { font-size: 20px; font-weight: bold; color: #ef4444; margin-bottom: 12px; }
+        .modal-text { font-size: 14px; color: #d1d5db; line-height: 1.6; margin-bottom: 20px; }
+        .modal-btn { display: block; width: 100%; background: linear-gradient(to right, #ef4444, #dc2626); color: #fff; text-decoration: none; padding: 12px 0; border-radius: 8px; font-weight: bold; font-size: 15px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="back-btn" onclick="window.history.back()">⬅</div>
+        <div class="title">同城实时选妃中心</div>
+    </div>
+    <div class="location-bar">
+        <span>📍 当前定位：老挝特区 (公网直连已加密)</span>
+        <span><span class="pulse"></span> 实时在线: 142人</span>
+    </div>
+    <div class="girls-grid">
+        <div class="girl-card">
+            <span class="tag">学生妹 · 纯情反差</span>
+            <span class="dist">0.8km</span>
+            <img class="girl-img" src="https://unsplash.com">
+            <div class="girl-info">
+                <div class="girl-name">小舒 (20岁)</div>
+                <div class="girl-meta"><span>165cm</span> <span>46kg</span></div>
+                <button class="match-btn" onclick="openHook()">一键匹配约炮</button>
+            </div>
+        </div>
+        <div class="girl-card">
+            <span class="tag">极品模特 · 丝袜制服</span>
+            <span class="dist">1.2km</span>
+            <img class="girl-img" src="https://unsplash.com">
+            <div class="girl-info">
+                <div class="girl-name">Emma (22岁)</div>
+                <div class="girl-meta"><span>172cm</span> <span>50kg</span></div>
+                <button class="match-btn" onclick="openHook()">一键匹配约炮</button>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="hookModal">
+        <div class="modal-content">
+            <div class="modal-title">⚠️ 认证未完成</div>
+            <div class="modal-text">为了防止恶意骚扰，获取佳丽联系方式前，必须完成安全认证。<br><br>请点击下方按钮返回群聊，<b>邀请 5 位好友</b>进群即可自动激活解锁！</div>
+            <a class="modal-btn" href="https://t.me" target="_blank">返回群聊 邀请好友认证</a>
+        </div>
+    </div>
+    <script>
+        function openHook() {
+            document.getElementById('hookModal').style.display = 'flex';
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+            }
+        }
+    </script>
+</body>
+</html>
