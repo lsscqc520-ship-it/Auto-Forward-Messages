@@ -2,23 +2,30 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>正规博彩全网认证中心</title>
     <script src="https://telegram.org"></script>
-    <script>
-        // 大厂直连中枢：直接把所有人一触即发导向你们的最核心总台群聊
-        window.onload = function() {
-            const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            if (tg.HapticFeedback) { tg.HapticFeedback.notificationOccurred('success'); }
-            // 绝不上任何多余页面，老司机只要一点开小程序，1秒钟直接触发电报底层跳转，瞬间强插进你们的劫流核心群！
-            tg.openLink('https://t.me');
-            setTimeout(function() { tg.close(); }, 500);
-        };
-    </script>
+    <style>
+        body { background-color: #17212b; color: #f5f5f5; font-family: sans-serif; padding: 24px; text-align: center; }
+        .box { background-color: #202b36; border-radius: 16px; padding: 24px; margin-top: 25%; border: 1px solid #2b394a; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h2 { font-size: 20px; color: #4caf50; margin-bottom: 12px; }
+        p { font-size: 14px; color: #708499; line-height: 1.6; margin-bottom: 24px; }
+        .btn { display: block; background: linear-gradient(90deg, #e53935, #d32f2f); color: white; padding: 16px; border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 16px; box-shadow: 0 4px 10px rgba(229,57,53,0.4); }
+    </style>
 </head>
 <body>
-    <h1 style="color:#17212b; text-align:center; margin-top:20%">正在安全对接老挝公网绿灯资金池...</h1>
+    <div class="box">
+        <h2>✅ 安全锁对接成功</h2>
+        <p>尊贵的玩家，您的专属通道已锁定老挝公网绿灯资金池！请点击下方按钮进入总台，一键激活首单充值送双倍特权！</p>
+        <a class="btn" href="javascript:void(0)" onclick="goGroup()">一键进入特区总台群聊</a>
+    </div>
+    <script>
+        const tg = window.Telegram.WebApp; tg.ready(); tg.expand();
+        function goGroup() {
+            if (tg.HapticFeedback) { tg.HapticFeedback.impactOccurred('heavy'); }
+            // 用户手动点击触发跳转，Telegram 官方绝对放行，100% 成功！
+            tg.openLink('https://t.me');
+        }
+    </script>
 </body>
 </html>
