@@ -2,7 +2,6 @@
         const player = document.getElementById('videoPlayer');
         const container = document.getElementById('videoContainer');
         const apiEndpoint = "https://kkzyapi.com";
-
         async function loadLiveVideos() {
             try {
                 let response = await fetch(apiEndpoint + "?ac=videolist&pg=1");
