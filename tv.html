@@ -2,42 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Hub Debug</title>
 </head>
 <body style="background:#0f141c; color:#fff; padding:20px; font-family:sans-serif;">
     <h3>调试信息：</h3>
-    <div id="debugInfo" style="word-break: break-all; color: #ff6b6b;">正在尝试连接...</div>
+    <div id="debugInfo" style="word-break: break-all; color: #ff6b6b;">正在尝试简单连接...</div>
 
     <script>
         const debugDiv = document.getElementById('debugInfo');
-        // 使用一个更通用的代理来处理跨域
-        const apiEndpoint = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://cj.ffzyapi.com/api.php/provide/vod/?ac=detail&pg=1");
+        // 直接请求，不经过复杂的编码，看看能不能通
+        const url = "https://corsproxy.io/?https://cj.ffzyapi.com/api.php/provide/vod/?ac=list";
 
-        async function testApi() {
-            try {
-                debugDiv.innerText = "正在请求接口...";
-                let response = await fetch(apiEndpoint);
-                
-                if (!response.ok) {
-                    throw new Error("HTTP 错误: " + response.status);
-                }
-
-                let data = await response.json();
-                // allorigins 返回的数据结构比较特殊
-                let result = JSON.parse(data.contents);
-
-                if (result && result.list) {
-                    debugDiv.style.color = "#38bdf8";
-                    debugDiv.innerText = "连接成功！获取到 " + result.list.length + " 个视频。";
-                } else {
-                    debugDiv.innerText = "数据格式异常: " + JSON.stringify(result).substring(0, 50);
-                }
-            } catch (error) {
-                debugDiv.innerText = "致命错误: " + error.message;
-            }
-        }
-        testApi();
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error("HTTP 状态码: " + response.status);
+                return response.json();
+            })
+            .then(data => {
+                debugDiv.style.color = "#38bdf8";
+                debugDiv.innerText = "成功！获取到数据，列表长度: " + (data.list ? data.list.length : "未知");
+            })
+            .catch(error => {
+                debugDiv.innerText = "错误: " + error.message;
+            });
     </script>
 </body>
 </html>
