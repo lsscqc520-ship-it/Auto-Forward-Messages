@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Video Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <style>
         :root { --bg-dark: #0f141c; --card-bg: #1a2332; --accent-color: #38bdf8; --text-light: #f3f4f6; --text-muted: #9ca3af; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; text-decoration: none; }
@@ -14,7 +15,8 @@
         video { width: 100%; height: 100%; object-fit: contain; }
         .section-title { font-size: 16px; font-weight: bold; padding: 15px 12px 5px 12px; color: var(--text-light); }
         .video-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 0 12px; }
-        .video-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid #2b394a; cursor: pointer; }
+        .video-card { background-color: var(--card-bg); border-radius: 12px; overflow: hidden; border: 1px solid #2b394a; cursor: pointer; transition: transform 0.2s; }
+        .video-card:active { transform: scale(0.98); }
         .thumb-box { position: relative; width: 100%; aspect-ratio: 16/10; background-color: #000; }
         .thumb-box img { width: 100%; height: 100%; object-fit: cover; }
         .video-info { padding: 10px; }
@@ -24,7 +26,7 @@
 <body>
     <div class="header"><div class="logo">Video Station</div></div>
     <div class="player-wrapper">
-        <video id="videoPlayer" controls autoplay playsinline src=""></video>
+        <video id="videoPlayer" controls playsinline></video>
     </div>
     <div class="section-title">Latest Updates</div>
     <div class="video-grid" id="videoContainer">Loading...</div>
@@ -32,28 +34,82 @@
     <script>
         const player = document.getElementById('videoPlayer');
         const container = document.getElementById('videoContainer');
-        const apiEndpoint = "https://kkzyapi.com";
+        
+        // 已经为你替换为了非凡资源的 API 接口
+        const apiEndpoint = "https://cj.ffzyapi.com/api.php/provide/vod/"; 
+        let hls;
+
+        // 解析 Maccms 的播放链接格式
+        function extractRealUrl(vodPlayUrl) {
+            if (!vodPlayUrl) return "";
+            // 以 $$$ 分割不同的播放源，取第一个源
+            const firstSource = vodPlayUrl.split('$$$')[0];
+            // 以 # 分割不同的集数，取第一集
+            const firstEpisode = firstSource.split('#')[0];
+            // 以 $ 分割名字和链接，取真实的 URL
+            const parts = firstEpisode.split('$');
+            return parts.length > 1 ? parts[1] : parts[0];
+        }
+
+        // 播放视频的处理逻辑 (兼容 m3u8)
+        function playVideo(url) {
+            if (!url) {
+                alert("无效的播放地址");
+                return;
+            }
+
+            if (Hls.isSupported() && url.includes('.m3u8')) {
+                if (hls) hls.destroy(); // 销毁上一个实例
+                hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(player);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    player.play();
+                });
+            } else if (player.canPlayType('application/vnd.apple.mpegurl') || !url.includes('.m3u8')) {
+                // 兼容苹果 Safari 等原生支持 m3u8 的浏览器，或 mp4 视频
+                player.src = url;
+                player.play();
+            }
+
+            // 滚动到顶部，方便用户观看
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         async function loadLiveVideos() {
             try {
-                let response = await fetch(apiEndpoint + "?ac=videolist&pg=1");
+                // 请求数据
+                let response = await fetch(apiEndpoint + "?ac=detail&pg=1");
+                
+                if (!response.ok) throw new Error("HTTP Status " + response.status);
+
                 let result = await response.json();
-                if (result && result.list) {
+                
+                if (result && result.list && result.list.length > 0) {
                     container.innerHTML = "";
                     result.list.slice(0, 40).forEach(item => {
                         let card = document.createElement('div');
                         card.className = 'video-card';
-                        card.onclick = () => { player.src = item.vod_play_url; player.play(); };
-                        card.innerHTML = '<div class="thumb-box"><img src="' + item.vod_pic + '"></div><div class="video-info"><div class="video-title">' + item.vod_name + '</div></div>';
+                        
+                        // 解析真实 URL
+                        let realUrl = extractRealUrl(item.vod_play_url);
+
+                        card.onclick = () => { playVideo(realUrl); };
+                        card.innerHTML = `
+                            <div class="thumb-box"><img src="${item.vod_pic || ''}" onerror="this.src=''"></div>
+                            <div class="video-info"><div class="video-title">${item.vod_name || '未知视频'}</div></div>
+                        `;
                         container.appendChild(card);
                     });
                 } else {
                     container.innerHTML = "<p style='padding:20px;'>No data source...</p>";
                 }
             } catch (error) {
-                container.innerHTML = "<p style='padding:20px;'>Connection error, try refreshing...</p>";
+                console.error(error);
+                container.innerHTML = "<p style='padding:20px;'>Connection error. 如果在本地打开报错，请尝试使用 VS Code 的 Live Server 运行以解决跨域问题。</p>";
             }
         }
+        
         window.onload = loadLiveVideos;
     </script>
 </body>
