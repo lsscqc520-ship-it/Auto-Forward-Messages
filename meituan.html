@@ -1,25 +1,25 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>测试</title>
-</head>
+    <title>GoDine 菜单 (v1.1)</title> </head>
 <body>
-    <h1 id="msg">代码已运行</h1>
+    <div id="content">正在获取最新菜单 (v1.1)...</div>
+
     <script>
-        console.log("脚本已执行");
-        document.getElementById('msg').innerText = "脚本已成功执行，准备加载Supabase...";
-        
-        // 尝试手动加载库
-        const script = document.createElement('script');
-        script.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
-        script.onload = () => {
-            document.getElementById('msg').innerText = "Supabase库加载成功！";
-        };
-        script.onerror = () => {
-            document.getElementById('msg').innerText = "错误：库加载失败！";
-        };
-        document.head.appendChild(script);
+        const URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co/rest/v1/menu?select=*';
+        const API_KEY = 'Sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ';
+
+        fetch(URL, {
+            headers: { 'apikey': API_KEY, 'Authorization': 'Bearer ' + API_KEY }
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('content').innerHTML = "数据获取成功: " + JSON.stringify(data);
+        })
+        .catch(err => {
+            document.getElementById('content').innerText = "发生错误: " + err.message;
+        });
     </script>
 </body>
 </html>
