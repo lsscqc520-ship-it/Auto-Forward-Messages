@@ -14,34 +14,36 @@
     </div>
 
     <script>
-        // 初始化 Supabase
+        // 你最新的配置
         const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
         const SUPABASE_KEY = 'Sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ';
+        
         const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         async function fetchMenu() {
             const container = document.getElementById('menu-list');
             
-            // 从 menu 表中读取所有数据
-            const { data, error } = await supabase.from('menu').select('*');
-            
-            if (error) {
-                container.innerHTML = `<p class="text-red-500 text-center">错误: ${error.message}</p>`;
-                return;
-            }
+            try {
+                // 从 menu 表中读取数据
+                const { data, error } = await supabase.from('menu').select('*');
+                
+                if (error) throw error;
 
-            if (data && data.length > 0) {
-                container.innerHTML = data.map(item => `
-                    <div class="bg-white p-4 rounded-lg shadow flex justify-between items-center">
-                        <div>
-                            <h3 class="font-bold text-lg">${item.product}</h3>
-                            <p class="text-orange-500 font-bold">¥${item.price}</p>
+                if (data && data.length > 0) {
+                    container.innerHTML = data.map(item => `
+                        <div class="bg-white p-4 rounded-lg shadow flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-lg">${item.product || '未知菜品'}</h3>
+                                <p class="text-orange-500 font-bold">¥${item.price || '0'}</p>
+                            </div>
+                            <button class="bg-green-500 text-white px-4 py-2 rounded-full">+</button>
                         </div>
-                        <button class="bg-green-500 text-white px-4 py-2 rounded-full">+</button>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = `<p class="text-center">菜单暂无数据。</p>`;
+                    `).join('');
+                } else {
+                    container.innerHTML = `<p class="text-center">菜单暂无数据。</p>`;
+                }
+            } catch (err) {
+                container.innerHTML = `<p class="text-center text-red-500" style="word-break:break-all;">加载失败: ${err.message}</p>`;
             }
         }
         
