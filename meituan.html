@@ -1,39 +1,33 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>GoDine 菜单</title>
+    <title>GoDine</title>
 </head>
 <body>
-    <div id="content">正在连接数据库...</div>
-
+    <div id="content">Connecting to database...</div>
     <script>
-        const URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co/rest/v1/menu?select=*';
-        // 使用你刚才提供的那个 Key
-        const KEY = 'Sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ';
+        const SUPABASE_KEY = 'Sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ';
+        const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
 
-        fetch(URL, {
+        fetch(`${SUPABASE_URL}/rest/v1/menu?select=*`, {
             headers: {
-                'apikey': KEY,
-                'Authorization': 'Bearer ' + KEY,
-                'Content-Type': 'application/json'
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
             }
         })
         .then(res => res.json())
         .then(data => {
             if (Array.isArray(data)) {
-                if (data.length === 0) {
-                    document.getElementById('content').innerText = "菜单为空。";
-                } else {
-                    document.getElementById('content').innerHTML = "<h2>今日菜单:</h2>" + 
-                        data.map(item => `<p>${item.name || '无名'}: ¥${item.price || 0}</p>`).join('');
-                }
+                document.getElementById('content').innerHTML = data.length > 0 
+                    ? data.map(item => `<p>${item.name}: ¥${item.price}</p>`).join('')
+                    : "No data found in database.";
             } else {
-                document.getElementById('content').innerText = "错误: " + JSON.stringify(data);
+                document.getElementById('content').innerText = "Request failed: " + JSON.stringify(data);
             }
         })
         .catch(err => {
-            document.getElementById('content').innerText = "网络异常: " + err.message;
+            document.getElementById('content').innerText = "Network error: " + err.message;
         });
     </script>
 </body>
