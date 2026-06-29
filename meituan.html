@@ -1,46 +1,50 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meituan Control</title>
-    <script src="https://jsdelivr.net"></script>
 </head>
 <body style="padding: 20px; font-family: sans-serif; background-color: #f4f7f6;">
     <div style="font-size: 20px; font-weight: bold; margin-bottom: 20px; color:#2c3e50;">Dashboard: Meituan Data Control</div>
     <div id="content" style="font-size: 16px; color: #666;">Connecting to system...</div>
 
     <script>
-        const SUPABASE_URL = 'https://supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk';
-
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        async function getMeituanData() {
-            try {
-                const { data, error } = await supabase
-                    .from('menu')
-                    .select('*')
-                    .order('id', { ascending: true });
-
-                if (error) throw error;
-
-                if (data && data.length > 0) {
+        const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
+        
+        // 使用 fetch 最稳定，无需加载任何外部 SDK
+        fetch(SUPABASE_URL + '/rest/v1/menu?select=*', {
+            method: 'GET',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_KEY,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (Array.isArray(data)) {
+                if (data.length > 0) {
                     document.getElementById('content').innerHTML = data.map(item => 
                         '<div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">' +
                         '<span style="font-size:18px; font-weight:bold; color:#2c3e50;">' + (item.name || 'Unknown') + '</span>' +
-                        '<span style="font-size:18px; font-weight:bold; color:#e74c3c;">$' + (item.price || 0) + '</span>' +
+                        '<span style="font-size:18px; font-weight:bold; color:#e74c3c;">¥' + (item.price || 0) + '</span>' +
                         '</div>'
                     ).join('');
                 } else {
                     document.getElementById('content').innerText = 'Data empty. Please insert rows in Supabase.';
                 }
-            } catch (err) {
-                document.getElementById('content').innerText = 'Status: ' + err.message;
+            } else {
+                document.getElementById('content').innerText = 'Error: ' + JSON.stringify(data);
             }
-        }
-
-        window.onload = getMeituanData;
+        })
+        .catch(err => {
+            document.getElementById('content').innerText = 'Status: ' + err.message;
+        });
     </script>
 </body>
 </html>
+
+```
