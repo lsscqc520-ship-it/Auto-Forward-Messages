@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,7 +12,8 @@
 
     <script>
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk';
-        const SUPABASE_URL = 'https://supabase.co';
+        // 已经修正为完整的项目 URL
+        const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
         const cleanUrl = SUPABASE_URL + '/rest/v1/menu?select=*&t=' + new Date().getTime();
 
         fetch(cleanUrl, {
@@ -32,7 +34,7 @@
                     document.getElementById('content').innerHTML = data.map(item => 
                         '<div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">' +
                         '<span style="font-size:18px; font-weight:bold; color:#2c3e50;">' + (item.name || 'Unknown') + '</span>' +
-                        '<span style="font-size:18px; font-weight:bold; color:#e74c3c;">$' + (item.price || 0) + '</span>' +
+                        '<span style="font-size:18px; font-weight:bold; color:#e74c3c;">¥' + (item.price || 0) + '</span>' +
                         '</div>'
                     ).join('');
                 } else {
@@ -48,3 +50,5 @@
     </script>
 </body>
 </html>
+
+```
