@@ -1,10 +1,9 @@
-```html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoDine 美团外卖</title>
+    <title>GoDine 美团风点餐</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#f4f4f4] pb-24 font-sans">
@@ -15,7 +14,6 @@
         </div>
     </div>
 
-    <!-- 支付遮罩层 -->
     <div id="payment-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-end sm:items-center justify-center z-50">
         <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6">
             <h2 class="text-xl font-bold text-center mb-4">扫码支付 ¥<span id="pay-amount">0</span></h2>
@@ -42,7 +40,6 @@
 
         async function init() {
             if (orderId) {
-                // 代付模式
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }});
                 const data = await res.json();
                 const order = data[0];
@@ -53,7 +50,6 @@
                         <button onclick="showPayment(${order.total})" class="w-full bg-[#ffc300] py-4 rounded-2xl font-black text-lg shadow-lg">确认帮TA买单</button>
                     </div>`;
             } else {
-                // 点餐模式
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/menu?select=*`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }});
                 const data = await res.json();
                 document.getElementById('main-content').innerHTML = data.map(item => `
@@ -88,5 +84,3 @@
     </script>
 </body>
 </html>
-
-```
