@@ -3,31 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoDine 美团风点餐</title>
+    <title>GoDine 美团外卖</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-[#f4f4f4] pb-24 font-sans">
-    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg">
-        <header class="p-4 bg-[#ffc300] font-black text-lg sticky top-0 shadow">GoDine 外卖</header>
+    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-lg relative">
+        <header class="p-4 bg-[#ffc300] font-black text-lg sticky top-0 shadow z-10">GoDine 外卖</header>
+
         <div id="main-content" class="p-4 space-y-4">
-            <!-- 动态加载页面内容 -->
+            <p class="text-center text-gray-500">正在加载数据...</p>
+        </div>
+
+        <div id="cart-bar" class="hidden fixed bottom-0 w-full max-w-md bg-white border-t p-4 flex justify-between items-center shadow-[0_-4px_10px_rgba(0,0,0,0.05)] z-20">
+            <div class="text-gray-800 font-bold">总计: <span class="text-2xl font-black text-[#ff4e00]">¥<span id="total-price">0</span></span></div>
+            <div class="flex gap-2">
+                <button onclick="generateShareLink()" class="bg-orange-50 text-[#ff4e00] px-3 py-2 rounded-full font-bold text-sm border border-orange-200 active:bg-orange-100">找人代付</button>
+                <button onclick="showSelfPayment()" class="bg-[#ffc300] px-5 py-2 rounded-full font-bold text-sm shadow-md active:bg-yellow-500">去结算</button>
+            </div>
         </div>
     </div>
 
     <div id="payment-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-end sm:items-center justify-center z-50">
-        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6">
-            <h2 class="text-xl font-bold text-center mb-4">扫码支付 ¥<span id="pay-amount">0</span></h2>
-            <div class="flex justify-between gap-4 mb-6">
+        <div class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 relative">
+            <button onclick="closePayment()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold text-2xl">&times;</button>
+            
+            <h2 class="text-xl font-bold text-center mb-2">请扫码支付</h2>
+            <div class="text-center text-4xl font-black text-[#ff4e00] mb-6">¥<span id="pay-amount">0</span></div>
+            
+            <div class="flex justify-between gap-4 mb-8">
                 <div class="w-1/2 text-center">
-                    <img src="https://i.ibb.co/fGDhkjkG/alipay.png" class="w-32 h-32 mx-auto border rounded-lg" alt="支付宝">
-                    <p class="text-xs mt-2 text-gray-600">支付宝扫码</p>
+                    <img src="https://i.ibb.co/fGDhkjkG/alipay.png" class="w-32 h-32 mx-auto border rounded-xl shadow-sm" alt="支付宝">
+                    <p class="text-xs mt-2 text-gray-600 font-bold">支付宝扫码</p>
                 </div>
                 <div class="w-1/2 text-center">
-                    <img src="https://i.ibb.co/scDgdg2/wechat.png" class="w-32 h-32 mx-auto border rounded-lg" alt="微信">
-                    <p class="text-xs mt-2 text-gray-600">微信扫码</p>
+                    <img src="https://i.ibb.co/scDgdg2/wechat.png" class="w-32 h-32 mx-auto border rounded-xl shadow-sm" alt="微信">
+                    <p class="text-xs mt-2 text-gray-600 font-bold">微信扫码</p>
                 </div>
             </div>
-            <button onclick="location.reload()" class="w-full bg-[#ffc300] py-4 rounded-2xl font-black text-lg shadow-lg">我已支付</button>
+            <button onclick="location.reload()" class="w-full bg-[#ffc300] py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition transform">我已完成支付</button>
         </div>
     </div>
 
@@ -37,50 +50,92 @@
         
         const params = new URLSearchParams(window.location.search);
         const orderId = params.get('orderId');
+        let cart = [];
 
         async function init() {
             if (orderId) {
+                document.getElementById('cart-bar').classList.add('hidden'); 
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${orderId}`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }});
                 const data = await res.json();
-                const order = data[0];
-                document.getElementById('main-content').innerHTML = `
-                    <div class="bg-white p-6 rounded-3xl shadow-sm text-center">
-                        <h2 class="text-xl font-black text-gray-800">好友邀请代付</h2>
-                        <div class="text-5xl font-black text-[#ff4e00] my-8">¥${order.total}</div>
-                        <button onclick="showPayment(${order.total})" class="w-full bg-[#ffc300] py-4 rounded-2xl font-black text-lg shadow-lg">确认帮TA买单</button>
-                    </div>`;
+                
+                if(data.length > 0) {
+                    const order = data[0];
+                    document.getElementById('main-content').innerHTML = `
+                        <div class="bg-white p-6 rounded-3xl shadow-sm text-center mt-6 border border-yellow-100">
+                            <div class="text-4xl mb-4">🥺</div>
+                            <h2 class="text-xl font-black text-gray-800">好友正在挨饿，求代付</h2>
+                            <p class="text-sm text-gray-500 mt-3 bg-gray-50 p-3 rounded-lg">订单内容: ${order.items.map(i=>i.name).join(', ')}</p>
+                            <div class="text-5xl font-black text-[#ff4e00] my-8">¥${order.total}</div>
+                            <button onclick="showPaymentModal(${order.total})" class="w-full bg-[#ffc300] py-4 rounded-2xl font-black text-lg shadow-lg">确认帮TA买单</button>
+                        </div>`;
+                } else {
+                    document.getElementById('main-content').innerHTML = "<p class='text-center mt-10 text-gray-500'>该订单不存在或已被支付。</p>";
+                }
             } else {
+                document.getElementById('cart-bar').classList.remove('hidden'); 
                 const res = await fetch(`${SUPABASE_URL}/rest/v1/menu?select=*`, { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }});
                 const data = await res.json();
+                
                 document.getElementById('main-content').innerHTML = data.map(item => `
                     <div class="flex items-center p-3 bg-white rounded-2xl shadow-sm">
-                        <div class="w-16 h-16 bg-gray-100 rounded-lg mr-4"></div>
+                        <div class="w-16 h-16 bg-gray-100 rounded-lg mr-4 flex items-center justify-center text-2xl">🍔</div>
                         <div class="flex-1">
-                            <div class="font-bold text-gray-800">${item.name}</div>
+                            <div class="font-bold text-gray-800 text-lg">${item.name}</div>
                             <div class="text-[#ff4e00] font-black text-lg">¥${item.price}</div>
                         </div>
-                        <button onclick="createOrder('${item.name}', ${item.price})" class="bg-[#ffc300] w-10 h-10 rounded-full font-black text-xl">+</button>
+                        <button onclick="addToCart('${item.name}', ${item.price})" class="bg-[#ffc300] w-8 h-8 rounded-full font-black text-xl shadow-sm active:scale-90 transition transform">+</button>
                     </div>`).join('');
             }
         }
 
-        async function createOrder(name, price) {
+        function addToCart(name, price) {
+            cart.push({ name, price });
+            const total = cart.reduce((s, i) => s + i.price, 0);
+            document.getElementById('total-price').innerText = total;
+        }
+
+        async function saveOrderToDB() {
+            const total = cart.reduce((s, i) => s + i.price, 0);
+            if(total === 0) { alert("购物车空空如也，请先选菜哦！"); return null; }
+            
             const res = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
                 method: 'POST',
                 headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
-                body: JSON.stringify({ items: [{name, price}], total: price, status: 'pending' })
+                body: JSON.stringify({ items: cart, total: total, status: 'pending' })
             });
             const data = await res.json();
-            const shareUrl = window.location.origin + window.location.pathname + "?orderId=" + data[0].id;
-            prompt("点餐成功！复制此链接发给好友代付：", shareUrl);
+            return data[0]; 
         }
 
-        function showPayment(total) {
+        async function showSelfPayment() {
+            const order = await saveOrderToDB();
+            if(order) showPaymentModal(order.total);
+        }
+
+        async function generateShareLink() {
+            const order = await saveOrderToDB();
+            if(order) {
+                const shareUrl = window.location.origin + window.location.pathname + "?orderId=" + order.id;
+                try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    alert("✅ 代付链接已复制到剪贴板！\n快去微信粘贴发给你的好朋友吧！");
+                } catch (err) {
+                    prompt("自动复制失败，请手动长按复制以下链接发送给好友：", shareUrl);
+                }
+            }
+        }
+
+        function showPaymentModal(total) {
             document.getElementById('pay-amount').innerText = total || 0;
             document.getElementById('payment-modal').classList.remove('hidden');
+        }
+
+        function closePayment() {
+            document.getElementById('payment-modal').classList.add('hidden');
         }
 
         init();
     </script>
 </body>
 </html>
+
