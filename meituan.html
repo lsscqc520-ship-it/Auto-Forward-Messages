@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GoDine</title>
+    <title>GoDine - Meituan Control</title>
 </head>
 <body style="padding: 20px; font-family: sans-serif; background-color: #f4f7f6;">
+    <div style="font-size: 20px; font-weight: bold; margin-bottom: 20px; color:#2c3e50;">📊 美团云端数据控制台</div>
     <div id="content" style="font-size: 16px; color: #666;">正在连接数据库...</div>
 
     <script>
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk';
-        const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
+        const SUPABASE_URL = 'https://supabase.co';
 
         fetch(SUPABASE_URL + '/rest/v1/menu?select=*', {
             headers: {
@@ -19,22 +20,20 @@
             }
         })
         .then(res => {
-            if (!res.ok) {
-                throw new Error("HTTP状态错误: " + res.status);
-            }
+            if (!res.ok) { throw new Error("HTTP Status Error: " + res.status); }
             return res.json();
         })
         .then(data => {
             if (Array.isArray(data)) {
                 document.getElementById('content').innerHTML = data.length > 0
-                    ? data.map(item => '<p style="font-size: 18px; font-weight: bold; color:#2c3e50; margin-bottom:10px;">' + (item.name || '未命名') + ': ¥' + (item.price || 0) + '</p>').join('')
-                    : '数据库里没有数据，请去后台添加数据。';
+                    ? data.map(item => '<div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;"><span style="font-size:18px; font-weight:bold; color:#2c3e50;">' + (item.name || 'Unknown') + '</span><span style="font-size:18px; font-weight:bold; color:#e74c3c;">¥' + (item.price || 0) + '</span></div>').join('')
+                    : '数据库 menu 表里目前空空如也，请去 Supabase 插入数据。';
             } else {
-                document.getElementById('content').innerText = '请求失败: ' + JSON.stringify(data);
+                document.getElementById('content').innerText = 'Request failed: ' + JSON.stringify(data);
             }
         })
         .catch(err => {
-            document.getElementById('content').innerText = '连接失败: ' + err.message;
+            document.getElementById('content').innerText = 'Network error: ' + err.message;
         });
     </script>
 </body>
