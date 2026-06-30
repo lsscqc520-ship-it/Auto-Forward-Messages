@@ -10,7 +10,7 @@
         .tab-content { display: none; padding: 15px; }
         .active { display: block; }
         .nav-fixed { position: fixed; bottom: 0; width: 100%; height: 60px; background: #fff; display: flex; justify-content: space-around; border-top: 1px solid #ddd; align-items: center; z-index: 999; }
-        .card { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card { background: #fff; padding: 15px; margin-bottom: 10px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
         button { border: none; background: none; font-size: 14px; cursor: pointer; }
     </style>
@@ -24,17 +24,17 @@
 
     <div id="tab-promo" class="tab-content">
         <h2>限时特价</h2>
-        <div id="promo-container"></div>
+        <div id="promo-container">暂无特价商品</div>
     </div>
 
     <div id="tab-orders" class="tab-content">
         <h2>我的订单</h2>
-        <div id="order-container"></div>
+        <div id="order-container">暂无订单</div>
     </div>
 
     <div id="tab-profile" class="tab-content">
         <h2>账户中心</h2>
-        <div class="card">联系方式: 138-xxxx-xxxx</div>
+        <div class="card" style="cursor: default;">联系方式: 138-xxxx-xxxx</div>
     </div>
 
     <nav class="nav-fixed">
@@ -45,7 +45,7 @@
     </nav>
 
     <div id="modal-checkout" class="modal">
-        <div class="card" style="width: 90%; max-width: 350px; text-align: center;">
+        <div class="card" style="width: 90%; max-width: 350px; text-align: center; cursor: default;">
             <div style="background: #004a99; color: white; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
                 <h3 style="margin: 0; font-size: 16px;">工商银行·便捷支付通道</h3>
             </div>
@@ -56,9 +56,10 @@
     </div>
 
     <script>
+        // 初始化 Supabase
         const client = supabase.createClient(
             "https://dzesfxynbljtkwsbhbvq.supabase.co", 
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk"
+            "sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ"
         );
 
         function showTab(id) {
@@ -68,12 +69,12 @@
 
         async function handlePayment() {
             document.getElementById('modal-checkout').style.display = 'none';
-            alert("支付确认已发送！");
+            alert("支付确认已提交！");
             await client.from('orders').insert([{ items: "选购商品", total_price: 0, status: 'paid' }]);
         }
 
         async function initData() {
-            // 加载商家
+            // 加载商家列表
             const { data: stores } = await client.from('stores').select('*');
             if(stores) document.getElementById('store-container').innerHTML = stores.map(s => `
                 <div class="card" onclick="document.getElementById('modal-checkout').style.display='flex'">
@@ -81,17 +82,6 @@
                 </div>
             `).join('');
 
-            // 加载订单
+            // 加载订单列表
             const { data: orders } = await client.from('orders').select('*').order('id', {ascending: false});
-            if(orders) document.getElementById('order-container').innerHTML = orders.map(o => `
-                <div class="card">订单：${o.items} <br>状态：<b>${o.status}</b></div>
-            `).join('');
-        }
-
-        // 实时监听数据库变化
-        client.channel('any').on('postgres_changes', { event: '*', schema: 'public', table: 'stores' }, () => initData()).subscribe();
-        
-        initData();
-    </script>
-</body>
-</html>
+            if(orders) document.getElementById('order
