@@ -22,7 +22,7 @@
         <button onclick="openCheckout()" style="padding: 15px; border-radius: 50%; background: #ffcc00; border:none; font-size:20px;">🛒</button>
     </div>
 
-    <div id="    <div id="    <div id="modal-checkout" class="modal">
+    <div id="modal-checkout" class="modal">
         <div class="card" style="background: white; color: #333; width: 90%; max-width: 350px; text-align: center; padding: 20px; border-radius: 16px;">
             <div style="background: #004a99; color: white; padding: 10px; border-radius: 8px 8px 0 0; margin: -20px -20px 15px -20px;">
                 <h3 style="margin: 0; font-size: 16px;">工商银行·便捷支付通道</h3>
@@ -45,33 +45,6 @@
             <button onclick="document.getElementById('modal-checkout').style.display='none'" style="background: none; border: none; color: #999; margin-top: 10px; cursor: pointer;">关闭</button>
         </div>
     </div>
-        <div class="card" style="background: white; color: #333; width: 90%; max-width: 350px; text-align: center; padding: 20px; border-radius: 20px;">
-            <h3 style="margin-top: 0; color: #333;">支付确认</h3>
-            
-            <div style="background: #f8f8f8; padding: 10px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #eee;">
-                <p style="margin: 0; font-weight: bold; font-size: 15px;">XX 严选品质小店</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px; color: #777;">请核对下方商品信息及金额</p>
-            </div>
-
-            <div id="checkout-details" style="text-align: left; font-size: 14px; margin-bottom: 15px; max-height: 120px; overflow-y: auto;">
-                </div>
-            
-            <div style="font-weight: bold; margin-bottom: 20px;">
-                应付金额: <span id="checkout-price" style="color: #ff4d4f; font-size: 28px;">¥0</span>
-            </div>
-            
-            <button class="btn" style="width: 100%; background: #07c160; color: white; padding: 12px; border-radius: 12px;" onclick="handlePayment()">我已付款，下单确认</button>
-            <button onclick="document.getElementById('modal-checkout').style.display='none'" style="background: none; border: none; color: #999; margin-top: 15px; cursor: pointer;">返回修改</button>
-        </div>
-    </div>
-        <div class="card" style="background: white; color: #333; width: 90%; max-width: 350px; text-align: center;">
-            <h3>支付确认</h3>
-            <div id="checkout-details" style="text-align: left; font-size: 14px; margin-bottom: 15px;"></div>
-            <div style="font-weight:bold; margin: 15px 0;">实付: <span id="checkout-price" style="color:red; font-size:24px;">¥0</span></div>
-            <button class="btn" style="width:100%; background:#07c160; color:white;" onclick="handlePayment()">我已付款，确认下单</button>
-            <button onclick="document.getElementById('modal-checkout').style.display='none'" style="background:none; border:none; color:#999; margin-top:10px;">返回</button>
-        </div>
-    </div>
 
     <div id="panel-status" class="card" style="display:none; position:fixed; top:20px; z-index:1001; text-align:center;">
         <h3>订单进度</h3>
@@ -90,18 +63,24 @@
         }
 
         async function handlePayment() {
-            let memo = prompt("请输入您的称呼或转账备注:");
-            if (!memo) return;
-            if (!confirm("确认已完成支付？")) return;
-
+            // 已移除输入弹窗，直接触发下单逻辑
             document.getElementById('modal-checkout').style.display = 'none';
             document.getElementById('panel-status').style.display = 'block';
             
             let total = cart.reduce((sum, i) => sum + (i.price * i.count), 0);
-            await client.from('orders').insert([{ customer_name: memo, total_price: total, items: cart.map(i=>i.name).join(','), status: 'paid' }]);
+            
+            await client.from('orders').insert([{ 
+                customer_name: "在线支付客户", 
+                total_price: total, 
+                items: cart.map(i=>i.name).join(','), 
+                status: 'paid' 
+            }]);
             
             const steps = ["订单已确认...", "备餐中...", "骑手配送中...", "已送达!"];
-            for(let s of steps) { document.getElementById('statusText').innerText = s; await new Promise(r => setTimeout(r, 2000)); }
+            for(let s of steps) { 
+                document.getElementById('statusText').innerText = s; 
+                await new Promise(r => setTimeout(r, 2000)); 
+            }
         }
 
         async function init() {
