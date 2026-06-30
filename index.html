@@ -1,46 +1,58 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Premium Order Center</title>
-<style>
-    :root { --bg-dark:#0f141c; --card-bg:#1a2332; --accent-color:#ffcc00; --text-light:#f3f4f6; --text-muted:#9ca3af; --wechat-color:#07c160; --alipay-color:#1677ff }
-    body { background:var(--bg-dark); color:var(--text-light); font-family:sans-serif; margin:0; padding:0; }
-    .banner { background:linear-gradient(135deg,#1e293b,#0f172a); padding:30px; text-align:center; border-bottom:2px solid var(--accent-color) }
-    .food-card { background:var(--card-bg); border-radius:15px; padding:15px; margin:15px; display:flex; align-items:center; border:1px solid #2b394a; box-shadow:0 4px 6px rgba(0,0,0,0.3); }
-    .food-info { flex:1; }
-    .food-title { font-size:18px; font-weight:bold; margin-bottom:5px; }
-    .price-tag { color:var(--accent-color); font-weight:bold; font-size:16px; }
-    .btn-add { background:var(--accent-color); color:#000; padding:10px 20px; border-radius:20px; border:none; font-weight:bold; cursor:pointer; }
-    .pay-modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:none; justify-content:center; align-items:center; z-index:1000; }
-    .pay-container { background:#1a2332; width:90%; max-width:320px; padding:25px; border-radius:20px; text-align:center; border:1px solid #334155; }
-    .qr-box { background:#fff; padding:10px; border-radius:15px; margin:20px 0; display:inline-block; }
-    .qr-box img { width:180px; height:180px; display:block; }
-    .tab { cursor:pointer; padding:10px 20px; background:#334155; margin:5px; border-radius:10px; display:inline-block; font-weight:bold; }
-    .tab:hover { background:#475569; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Order Hub</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --bg-dark:#0f141c; --card-bg:#1a2332; --accent-color:#ffcc00; --text-light:#f3f4f6; }
+        body { background: var(--bg-dark); color: var(--text-light); font-family: sans-serif; margin: 0; }
+        .banner { background: #1e293b; padding: 20px; text-align: center; border-bottom: 2px solid var(--accent-color); }
+        .menu-container { padding: 20px; }
+        .item-card { background: var(--card-bg); border-radius: 12px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
+        .btn-order { background: var(--accent-color); color: #000; padding: 8px 16px; border-radius: 20px; border: none; font-weight: bold; cursor: pointer; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; }
+        .modal-content { background: var(--card-bg); padding: 20px; border-radius: 16px; text-align: center; width: 85%; max-width: 300px; }
+        .qr-img { width: 180px; height: 180px; background: #fff; margin: 15px auto; }
+    </style>
 </head>
 <body>
-    <div class="banner"><h1>Premium Order</h1></div>
-    <div id="menu"></div>
-    <div class="pay-modal" id="modal">
-        <div class="pay-container">
-            <div onclick="showPay('wechat')" class="tab">WeChat</div>
-            <div onclick="showPay('alipay')" class="tab">Alipay</div>
-            <div class="qr-box"><img id="qrDisplay" src="https://i.ibb.co/Jw33DZ6r/image.png"></div>
-            <button onclick="document.getElementById('modal').style.display='none'" style="background:none; border:none; color:var(--text-muted); cursor:pointer;">Close</button>
+    <div class="banner"><h1>Premium Menu</h1></div>
+    <div class="menu-container" id="menu">正在加载菜单...</div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button onclick="setQr('https://i.ibb.co/Jw33DZ6r/image.png')">WeChat</button>
+            <button onclick="setQr('https://i.ibb.co/RkT2BXKw/image.png')">Alipay</button>
+            <div class="qr-img"><img id="qrDisplay" src="" style="width:100%"></div>
+            <button onclick="document.getElementById('modal').style.display='none'">关闭</button>
         </div>
     </div>
+
     <script>
-        const wechatImg = "https://i.ibb.co/Jw33DZ6r/image.png";
-        const alipayImg = "https://i.ibb.co/RkT2BXKw/image.png";
-        function showPay(type){ document.getElementById('qrDisplay').src = (type === 'wechat') ? wechatImg : alipayImg; }
-        function openPay(){ document.getElementById('modal').style.display = 'flex'; }
-        const menu = document.getElementById('menu');
-        ['Premium Burger', 'Super Combo'].forEach(item=>{
-            menu.innerHTML += `<div class="food-card"><div class="food-info"><div class="food-title">${item}</div><div class="price-tag">¥50</div></div><button class="btn-add" onclick="openPay()">Order</button></div>`
-        })
+        // 配置信息
+        const SUPABASE_URL = "https://dzesfxynbljtkwsbhbvq.supabase.co";
+        const SUPABASE_KEY = "Sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 加载菜单
+        async function loadMenu() {
+            const { data, error } = await supabase.from('products').select('*');
+            const menuDiv = document.getElementById('menu');
+            if (error) { menuDiv.innerHTML = "加载失败：" + error.message; return; }
+            menuDiv.innerHTML = data.map(item => `
+                <div class="item-card">
+                    <div><strong>${item.name}</strong><br><span style="color:var(--accent-color)">¥${item.price}</span></div>
+                    <button class="btn-order" onclick="openModal()">下单</button>
+                </div>
+            `).join('');
+        }
+
+        function openModal() { document.getElementById('modal').style.display = 'flex'; }
+        function setQr(url) { document.getElementById('qrDisplay').src = url; }
+
+        loadMenu();
     </script>
 </body>
 </html>
