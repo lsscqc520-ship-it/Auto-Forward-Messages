@@ -1,96 +1,16 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menu</title>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <style>
-        body { background: #0f141c; color: #fff; font-family: sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
-        .card { background: #1a2332; width: 100%; max-width: 500px; padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #334155; box-sizing: border-box; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
-        .btn { background: #ffcc00; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; color: #1a2332; }
-    </style>
-</head>
-<body>
-    <div id="panel-menu" style="width: 100%; max-width: 500px;">
-        <h2 style="text-align:center;">今日菜单</h2>
-        <div id="menu-list">Loading...</div>
-    </div>
-
-    <div style="position: fixed; bottom: 80px; right: 20px; z-index: 999;">
-        <button onclick="openCheckout()" style="padding: 15px; border-radius: 50%; background: #ffcc00; border:none; font-size:20px;">🛒</button>
-    </div>
-
-    <div id="modal-checkout" class="modal">
-        <div class="card" style="background: white; color: #333; width: 90%; max-width: 350px; text-align: center; padding: 20px; border-radius: 16px;">
-            <div style="background: #004a99; color: white; padding: 10px; border-radius: 8px 8px 0 0; margin: -20px -20px 15px -20px;">
-                <h3 style="margin: 0; font-size: 16px;">工商银行·便捷支付通道</h3>
-                <p style="margin: 0; font-size: 10px; opacity: 0.8;">由支付宝提供结算支持</p>
+// 1. 修改 init() 函数：删除 alert，并加上图片逻辑
+async function init() {
+    const { data } = await client.from('products').select('*');
+    document.getElementById('menu-list').innerHTML = data.map(item => `
+        <div class="card" style="display:flex; align-items:center;">
+            <!-- 菜品照片区 -->
+            <img src="${item.image_url || 'https://via.placeholder.com/60'}" style="width:60px; height:60px; border-radius:8px; margin-right:15px;">
+            <div style="flex-grow:1;">
+                <strong>${item.name}</strong><br>
+                <span style="color:#ffcc00;">¥${item.price}</span>
             </div>
-
-            <div style="padding: 10px 0;">
-                <p style="font-size: 14px; margin-bottom: 10px;">请扫码完成转账：</p>
-                <img src="https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" style="width: 160px; height: 160px; border: 4px solid #f0f0f0; border-radius: 8px;">
-                <p style="font-size: 12px; color: #555; margin-top: 10px;">长按二维码识别 · 微信/支付宝通用</p>
-            </div>
-
-            <div id="checkout-details" style="text-align: left; font-size: 13px; margin: 15px 0; border-top: 1px solid #eee; padding-top: 10px;"></div>
-            
-            <div style="font-weight: bold; margin-bottom: 15px;">
-                应付金额: <span id="checkout-price" style="color: #d46b08; font-size: 28px;">¥0</span>
-            </div>
-            
-            <button class="btn" style="width: 100%; background: #004a99; color: white; padding: 12px; border-radius: 8px;" onclick="handlePayment()">我已付款，下单确认</button>
-            <button onclick="document.getElementById('modal-checkout').style.display='none'" style="background: none; border: none; color: #999; margin-top: 10px; cursor: pointer;">关闭</button>
+            <!-- 去掉alert，改成静默添加 -->
+            <button class="btn" onclick="cart.push({name:'${item.name}', price:${item.price}, count:1});">添加</button>
         </div>
-    </div>
-
-    <div id="panel-status" class="card" style="display:none; position:fixed; top:20px; z-index:1001; text-align:center;">
-        <h3>订单进度</h3>
-        <p id="statusText" style="font-size:20px; color:#07c160;"></p>
-    </div>
-
-    <script>
-        const client = supabase.createClient("https://dzesfxynbljtkwsbhbvq.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk");
-        let cart = [];
-
-        function openCheckout() {
-            let total = cart.reduce((sum, i) => sum + (i.price * i.count), 0);
-            document.getElementById('checkout-details').innerHTML = cart.map(i => `${i.name} x${i.count}`).join('<br>');
-            document.getElementById('checkout-price').innerText = '¥' + total;
-            document.getElementById('modal-checkout').style.display = 'flex';
-        }
-
-        async function handlePayment() {
-            // 已移除输入弹窗，直接触发下单逻辑
-            document.getElementById('modal-checkout').style.display = 'none';
-            document.getElementById('panel-status').style.display = 'block';
-            
-            let total = cart.reduce((sum, i) => sum + (i.price * i.count), 0);
-            
-            await client.from('orders').insert([{ 
-                customer_name: "在线支付客户", 
-                total_price: total, 
-                items: cart.map(i=>i.name).join(','), 
-                status: 'paid' 
-            }]);
-            
-            const steps = ["订单已确认...", "备餐中...", "骑手配送中...", "已送达!"];
-            for(let s of steps) { 
-                document.getElementById('statusText').innerText = s; 
-                await new Promise(r => setTimeout(r, 2000)); 
-            }
-        }
-
-        async function init() {
-            const { data } = await client.from('products').select('*');
-            document.getElementById('menu-list').innerHTML = data.map(item => `
-                <div class="card"><strong>${item.name}</strong> - ¥${item.price} 
-                <button class="btn" onclick="cart.push({name:'${item.name}', price:${item.price}, count:1}); alert('已添加');">+</button></div>
-            `).join('');
-        }
-        init();
-    </script>
-</body>
-</html>
+    `).join('');
+}
