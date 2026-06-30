@@ -1,425 +1,64 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICBC 聚合支付系统</title>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <style>
-        body { 
-            margin: 0; 
-            background: #f8f9fa; 
-            font-family: "PingFang SC", sans-serif; 
-            padding-bottom: 70px; 
-        }
-        .tab-view { display: none; }
-        .tab-view.active { display: block; }
-        .card { 
-            background: white; 
-            margin: 12px; 
-            padding: 15px; 
-            border-radius: 12px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            box-shadow: 0 1px 4px rgba(0,0,0,0.05); 
-        }
-        .nav-bar { 
-            position: fixed; 
-            bottom: 0; 
-            width: 100%; 
-            height: 60px; 
-            background: white; 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: center; 
-            border-top: 1px solid #eee; 
-            z-index: 100; 
-        }
-        .nav-item { 
-            cursor: pointer; 
-            padding: 10px; 
-            flex: 1; 
-            text-align: center; 
-        }
-        .modal { 
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: rgba(0,0,0,0.5); 
-            z-index: 2000; 
-            justify-content: center; 
-            align-items: center; 
-        }
-        .icbc-container { 
-            background: #fff; 
-            width: 85%; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            text-align: center; 
-        }
-        .icbc-top { 
-            background: #004a99; 
-            color: white; 
-            padding: 20px; 
-        }
-        .icbc-body { 
-            padding: 20px; 
-        }
-        .btn-pay { 
-            width: 90%; 
-            background: #004a99; 
-            color: white; 
-            padding: 12px; 
-            border-radius: 6px; 
-            border: none; 
-            font-size: 16px; 
-            margin-top: 10px; 
-            cursor: pointer; 
-        }
-        .btn-pay:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>购物车系统</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{font-family:Arial;margin:0;background:#f7f7f7}
+.nav{display:flex;gap:8px;padding:12px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0}
+.nav-item{padding:10px 14px;border-radius:10px;cursor:pointer;background:#f1f1f1}
+.nav-item.active{background:#111;color:#fff}
+.tab-view{display:none;padding:16px}
+.tab-view.active{display:block}
+.card{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select{padding:10px;border:1px solid #ddd;border-radius:10px}
+.btn{padding:8px 12px;border:0;border-radius:10px;cursor:pointer}
+.p{background:#111;color:#fff}.w{background:#ffcc00}.d{background:#ff4d4f;color:#fff}.g{background:#22c55e;color:#fff}
+.muted{color:#777}
+</style>
 </head>
 <body>
+<div class="nav">
+  <div class="nav-item active" data-tab="view-stores">🏪 商家</div>
+  <div class="nav-item" data-tab="view-cart">🛒 购物车</div>
+  <div class="nav-item" data-tab="view-orders">📋 订单</div>
+  <div class="nav-item" data-tab="view-admin">⚙️ 管理</div>
+</div>
 
-    <div id="view-home" class="tab-view active">
-        <div style="padding:20px; font-size:18px; font-weight:bold;">热门商户</div>
-        <div id="store-list">加载中...</div>
-    </div>
+<div id="view-stores" class="tab-view active"><h2>商家列表</h2><div id="store-list" class="muted">加载中...</div></div>
 
-    <div id="view-cart" class="tab-view">
-        <div style="padding:20px; font-size:18px; font-weight:bold;">购物车结算</div>
-        <div id="cart-list" style="padding:10px;">您的购物车是空的</div>
-    </div>
+<div id="view-cart" class="tab-view">
+  <h2>购物车</h2>
+  <div class="card">共 <b id="cart-count">0</b> 件，合计 ¥<b id="cart-total">0.00</b> <button class="btn p" onclick="checkout()">提交订单</button></div>
+  <div id="cart-list" class="muted">购物车为空</div>
+</div>
 
-    <div id="view-orders" class="tab-view">
-        <div style="padding:20px; font-size:18px; font-weight:bold;">交易记录</div>
-        <div id="order-list">暂无订单</div>
-    </div>
+<div id="view-orders" class="tab-view"><h2>订单</h2><div id="order-list" class="muted">暂无订单</div></div>
 
-    <div id="view-admin" class="tab-view">
-        <div style="padding:20px; font-size:18px; font-weight:bold;">系统管理</div>
-        <div class="card">
-            <input id="store-input" placeholder="请输入商家名称" style="border:none; width:70%;">
-            <button id="btn-add-store" style="background:#004a99; color:white; border:none; padding:5px 10px; cursor:pointer;">添加</button>
-        </div>
-    </div>
+<div id="view-admin" class="tab-view">
+  <h2>管理</h2>
+  <div class="card row">
+    <input id="store-input" placeholder="输入商家名称" />
+    <button class="btn w" onclick="addStore()">添加商家</button>
+  </div>
+</div>
 
-    <div id="modal-pay" class="modal">
-        <div class="icbc-container">
-            <div class="icbc-top">中国工商银行支付</div>
-            <div class="icbc-body">
-                <p>订单金额: <b style="font-size:24px;">¥<span id="pay-amount">0.00</span></b></p>
-                <img src="https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" style="width:180px; border:1px solid #eee; padding:5px;">
-                <p style="font-size:12px; color:#888;">请使用手机银行或扫码完成支付</p>
-                <button class="btn-pay" id="btn-pay">已完成支付</button>
-            </div>
-        </div>
-    </div>
+<script>
+const SUPABASE_URL='https://dzesfxynbljtkwsbhbvq.supabase.co';
+const SUPABASE_KEY='YOUR_KEY_HERE';
+const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let cart={};
 
-    <div class="nav-bar">
-        <div class="nav-item" data-tab="view-home">🏠 首页</div>
-        <div class="nav-item" data-tab="view-cart">🛒 购物车</div>
-        <div class="nav-item" data-tab="view-orders">📋 订单</div>
-        <div class="nav-item" data-tab="view-admin">⚙️ 管理</div>
-    </div>
+const esc=t=>String(t??'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m]));
 
-    <script>
-        // 使用环境变量（生产环境应该使用后端代理）
-        const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ';
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
-        let cart = {};
+function switchTab(id){document.querySelectorAll('.tab-view').forEach(v=>v.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelector(`[data-tab="${id}"]`).classList.add('active');if(id==='view-orders')loadOrders();}
+document.querySelectorAll('.nav-item').forEach(x=>x.onclick=()=>switchTab(x.dataset.tab));
 
-        // ========== 工具函数 ==========
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return String(text).replace(/[&<>"']/g, m => map[m]);
-        }
-
-        // ========== 选项卡管理 ==========
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            
-            if (tabId === 'view-orders') {
-                loadOrders();
-            }
-        }
-
-        // ========== 商家管理 ==========
-        async function loadStores() {
-            try {
-                const { data, error } = await client.from('stores').select('*');
-                
-                if (error) throw error;
-                
-                if (!data || data.length === 0) {
-                    document.getElementById('store-list').innerHTML = '暂无商家';
-                    return;
-                }
-                
-                renderStores(data);
-            } catch (err) {
-                console.error('加载商家失败:', err);
-                document.getElementById('store-list').innerHTML = '❌ 加载失败，请刷新页面重试';
-            }
-        }
-
-        function renderStores(stores) {
-            const container = document.getElementById('store-list');
-            container.innerHTML = stores.map(store => `
-                <div class="card">
-                    <div><b>${escapeHtml(store.name)}</b></div>
-                    <button class="btn-add-cart" data-store-id="${store.id}" data-store-name="${escapeHtml(store.name)}" style="background:#ffcc00; border:none; padding:5px 15px; border-radius:15px; cursor:pointer;">添加</button>
-                </div>
-            `).join('');
-            
-            // 事件委托
-            container.querySelectorAll('.btn-add-cart').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    addToCart(btn.dataset.storeId, btn.dataset.storeName);
-                });
-            });
-        }
-
-        async function addStore() {
-            const nameInput = document.getElementById('store-input');
-            const name = nameInput.value?.trim();
-            
-            if (!name) {
-                alert('❌ 请输入商家名称');
-                return;
-            }
-            
-            if (name.length < 2 || name.length > 50) {
-                alert('❌ 商家名称长度应在 2-50 个字符之间');
-                return;
-            }
-            
-            try {
-                const { error } = await client.from('stores').insert([{ name }]);
-                
-                if (error) throw error;
-                
-                alert('✅ 商家已添加');
-                nameInput.value = '';
-                await loadStores();
-            } catch (err) {
-                console.error('添加商家失败:', err);
-                alert('❌ 添加失败：' + err.message);
-            }
-        }
-
-        // ========== 购物车管理 ==========
-        function addToCart(storeId, storeName) {
-            if (cart[storeId]) {
-                cart[storeId].quantity += 1;
-            } else {
-                cart[storeId] = {
-                    name: storeName,
-                    quantity: 1,
-                    price: 19.90  // 示例价格
-                };
-            }
-            
-            updateCartUI();
-            alert(`✅ 已添加: ${storeName}`);
-        }
-
-        function removeFromCart(storeId) {
-            delete cart[storeId];
-            updateCartUI();
-        }
-
-        function calculateTotal() {
-            return Object.values(cart).reduce((sum, item) => 
-                sum + (item.price * item.quantity), 0
-            ).toFixed(2);
-        }
-
-        function updateCartUI() {
-            const container = document.getElementById('cart-list');
-            const items = Object.entries(cart);
-            
-            if (items.length === 0) {
-                container.innerHTML = '您的购物车是空的';
-                return;
-            }
-            
-            const total = calculateTotal();
-            let html = '<div>';
-            
-            items.forEach(([storeId, item]) => {
-                html += `
-                    <div class="card">
-                        <div>
-                            <b>${escapeHtml(item.name)}</b>
-                            <span style="margin-left: 10px;">×${item.quantity}</span>
-                            <span style="margin-left: 10px;">¥${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                        <button class="btn-remove" data-store-id="${storeId}" style="background:#ff6b6b; color:white; border:none; padding:5px 10px; cursor:pointer;">删除</button>
-                    </div>
-                `;
-            });
-            
-            html += `
-                <div class="card" style="justify-content: space-between; font-weight: bold;">
-                    <span>总计：¥${total}</span>
-                    <button id="btn-checkout" class="btn-pay" style="width: auto; padding: 5px 15px;">去支付</button>
-                </div>
-            </div>`;
-            
-            container.innerHTML = html;
-            
-            container.querySelectorAll('.btn-remove').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    removeFromCart(btn.dataset.storeId);
-                });
-            });
-            
-            document.getElementById('btn-checkout').addEventListener('click', showPaymentModal);
-        }
-
-        function showPaymentModal() {
-            const total = calculateTotal();
-            document.getElementById('pay-amount').textContent = total;
-            document.getElementById('modal-pay').style.display = 'flex';
-        }
-
-        // ========== 支付管理 ==========
-        async function executePayment() {
-            if (Object.keys(cart).length === 0) {
-                alert('❌ 购物车为空');
-                return;
-            }
-            
-            const btn = document.getElementById('btn-pay');
-            btn.disabled = true;
-            btn.innerText = "处理中...";
-            
-            try {
-                const orderData = {
-                    items: JSON.stringify(cart),
-                    total: calculateTotal(),
-                    status: 'pending',
-                    created_at: new Date().toISOString()
-                };
-                
-                const { data, error } = await client
-                    .from('orders')
-                    .insert([orderData])
-                    .select();
-                
-                if (error) throw error;
-                
-                const orderId = data[0].id;
-                
-                alert('✅ 订单已生成，订单号：' + orderId);
-                document.getElementById('modal-pay').style.display = 'none';
-                cart = {};
-                updateCartUI();
-                await loadOrders();
-            } catch (err) {
-                console.error('支付失败:', err);
-                alert('❌ 支付失败：' + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "已完成支付";
-            }
-        }
-
-        // ========== 订单管理 ==========
-        async function loadOrders() {
-            try {
-                const { data, error } = await client
-                    .from('orders')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) throw error;
-                
-                if (!data || data.length === 0) {
-                    document.getElementById('order-list').innerHTML = '暂无订单';
-                    return;
-                }
-                
-                renderOrders(data);
-            } catch (err) {
-                console.error('加载订单失败:', err);
-                document.getElementById('order-list').innerHTML = '❌ 加载失败';
-            }
-        }
-
-        function renderOrders(orders) {
-            const container = document.getElementById('order-list');
-            container.innerHTML = orders.map(order => {
-                let items = '未知';
-                try {
-                    const parsed = JSON.parse(order.items);
-                    items = Object.values(parsed).map(i => i.name).join(', ');
-                } catch (e) {
-                    items = order.items;
-                }
-                
-                return `
-                    <div class="card">
-                        <div>
-                            <div style="font-weight: bold;">订单 #${order.id}</div>
-                            <div style="font-size: 12px; color: #888;">商品: ${escapeHtml(items)}</div>
-                            <div style="font-size: 12px; color: #888;">金额: ¥${escapeHtml(order.total)}</div>
-                        </div>
-                        <div style="color: ${order.status === 'paid' ? 'green' : 'orange'}; font-weight: bold;">
-                            ${order.status === 'paid' ? '✅ 已入账' : '⏳ 待支付'}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // ========== 事件绑定 ==========
-        document.addEventListener('DOMContentLoaded', () => {
-            // 导航栏
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    switchTab(item.dataset.tab);
-                });
-            });
-            
-            // 添加商家
-            document.getElementById('btn-add-store').addEventListener('click', addStore);
-            
-            // 回车添加商家
-            document.getElementById('store-input').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addStore();
-            });
-            
-            // 支付按钮
-            document.getElementById('btn-pay').addEventListener('click', executePayment);
-            
-            // 关闭支付弹窗
-            document.getElementById('modal-pay').addEventListener('click', (e) => {
-                if (e.target.id === 'modal-pay') {
-                    document.getElementById('modal-pay').style.display = 'none';
-                }
-            });
-            
-            // 加载初始数据
-            loadStores();
-        });
-    </script>
-</body>
-</html>
+async function loadStores(){try{const {data,error}=await client.from('stores').select('*').order('created_at',{ascending:false});if(error)throw error;renderStores(data||[])}catch(e){console.error(e);store-list.innerHTML='❌ 加载失败';}}
+function renderStores(list){const c=document.getElementById('store-list');if(!list.length){c.innerHTML='暂无商家';return}
+c.innerHTML=list.map(s=>`<div class="card row" style="justify-content:space-between"><div><b>${esc(s.name)}</b><div class="muted">ID: ${esc(s.id)}</div></div><div class="row"><button class="btn w" data-add="${s.id}" data-name="${esc(s.name)}">添加</button><button class="btn d" onclick="deleteStore('${s.id}')">删除</button></div></div>`).join('');
+c.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addToCart(b.dataset.add,b.dataset.name));}
+async funct...
