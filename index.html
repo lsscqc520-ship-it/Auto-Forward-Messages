@@ -3,77 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>外卖平台</title>
+    <title>轻量化外卖系统</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        body { background: #f4f4f4; color: #333; font-family: sans-serif; margin: 0; padding-bottom: 60px; }
-        .card { background: white; width: 90%; max-width: 500px; margin: 10px auto; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #eee; }
-        .tab-btn { border:none; background:none; font-size:12px; }
-        .modal { display: none; position: fixed; top:0; left:0; width: 100%; height:100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+        body { margin: 0; background: #f8f8f8; font-family: sans-serif; padding-bottom: 60px; }
+        .tab-content { display: none; padding: 15px; }
+        .active { display: block; }
+        .nav-fixed { position: fixed; bottom: 0; width: 100%; height: 55px; background: #fff; display: flex; justify-content: space-around; border-top: 1px solid #ddd; align-items: center; z-index: 999; }
+        .card { background: #fff; padding: 12px; margin-bottom: 10px; border-radius: 10px; }
+        .btn-main { background: #ffcc00; border: none; padding: 8px 15px; border-radius: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="view-home">
-        <div style="background:#ffcc00; padding: 20px; text-align:center;"><h3>美团式外卖系统</h3></div>
-        <div id="store-list">加载商家中...</div>
+    <div id="tab-home" class="tab-content active">
+        <h2>附近商家</h2>
+        <div id="store-container"></div>
     </div>
 
-    <div id="view-menu" style="display:none;">
-        <button onclick="document.getElementById('view-menu').style.display='none'; document.getElementById('view-home').style.display='block'">返回首页</button>
-        <div id="menu-list"></div>
+    <div id="tab-promo" class="tab-content">
+        <h2>限时特价</h2>
+        <div id="promo-container"></div>
     </div>
 
-    <div class="nav-bar">
-        <button class="tab-btn" onclick="location.reload()">首页</button>
-        <button class="tab-btn">神券</button>
-        <button class="tab-btn">订单</button>
-        <button class="tab-btn">我的</button>
+    <div id="tab-orders" class="tab-content">
+        <h2>我的订单</h2>
+        <div id="order-container"></div>
     </div>
+
+    <div id="tab-profile" class="tab-content">
+        <h2>账户中心</h2>
+        <div class="card">联系方式: 138-xxxx-xxxx</div>
+    </div>
+
+    <nav class="nav-fixed">
+        <button onclick="showTab('tab-home')">主页</button>
+        <button onclick="showTab('tab-promo')">特价</button>
+        <button onclick="showTab('tab-orders')">订单</button>
+        <button onclick="showTab('tab-profile')">我</button>
+    </nav>
 
     <script>
-        const client = supabase.createClient("https://dzesfxynbljtkwsbhbvq.supabase.co", "你的Key"); // 记得填入你的Key
+        const client = supabase.createClient("YOUR_URL", "YOUR_KEY");
 
-        // 模拟加载商家数据
-        async function loadStores() {
-            // 这里你可以去 Supabase 创建一个 'stores' 表
-            // 暂时用模拟数据展示美团卡片样式
-            const stores = [
-                { id: 1, name: "蜜雪冰城", sales: "3000+", time: "43分钟", img: "https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" },
-                { id: 2, name: "牛霸烤肉堡", sales: "700+", time: "58分钟", img: "https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" }
-            ];
-            
-            document.getElementById('store-list').innerHTML = stores.map(s => `
-                <div class="card" onclick="openStore(${s.id})">
-                    <div style="display:flex;">
-                        <img src="${s.img}" style="width:80px; height:80px; border-radius:8px;">
-                        <div style="margin-left:10px;">
-                            <strong>${s.name}</strong>
-                            <p style="font-size:12px; color:#666;">月售 ${s.sales} | 配送约 ${s.time}</p>
-                            <span style="background:#fff3e0; color:#ff9800; padding:2px 5px; font-size:10px;">品质联盟</span>
-                        </div>
-                    </div>
-                </div>
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+        }
+
+        // 初始化加载函数
+        async function initData() {
+            // 加载主页商家
+            const { data: stores } = await client.from('stores').select('*');
+            document.getElementById('store-container').innerHTML = stores.map(s => `
+                <div class="card"><strong>${s.name}</strong><p>${s.description}</p></div>
+            `).join('');
+
+            // 加载订单逻辑
+            const { data: orders } = await client.from('orders').select('*').limit(5);
+            document.getElementById('order-container').innerHTML = orders.map(o => `
+                <div class="card">订单：${o.items} <br>状态：<b style="color:green">${o.status}</b></div>
             `).join('');
         }
-
-        function openStore(id) {
-            document.getElementById('view-home').style.display = 'none';
-            document.getElementById('view-menu').style.display = 'block';
-            // 这里可以根据 store id 去数据库 load 对应的菜品
-            initMenu(); 
-        }
-
-        async function initMenu() {
-            const { data } = await client.from('products').select('*');
-            document.getElementById('menu-list').innerHTML = data.map(item => `
-                <div class="card"><strong>${item.name}</strong> - ¥${item.price} 
-                <button onclick="alert('已添加')">加购</button></div>
-            `).join('');
-        }
-
-        loadStores();
+        initData();
     </script>
 </body>
 </html>
