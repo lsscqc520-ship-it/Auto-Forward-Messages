@@ -1,16 +1,79 @@
-// 1. 修改 init() 函数：删除 alert，并加上图片逻辑
-async function init() {
-    const { data } = await client.from('products').select('*');
-    document.getElementById('menu-list').innerHTML = data.map(item => `
-        <div class="card" style="display:flex; align-items:center;">
-            <!-- 菜品照片区 -->
-            <img src="${item.image_url || 'https://via.placeholder.com/60'}" style="width:60px; height:60px; border-radius:8px; margin-right:15px;">
-            <div style="flex-grow:1;">
-                <strong>${item.name}</strong><br>
-                <span style="color:#ffcc00;">¥${item.price}</span>
-            </div>
-            <!-- 去掉alert，改成静默添加 -->
-            <button class="btn" onclick="cart.push({name:'${item.name}', price:${item.price}, count:1});">添加</button>
-        </div>
-    `).join('');
-}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>外卖平台</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #f4f4f4; color: #333; font-family: sans-serif; margin: 0; padding-bottom: 60px; }
+        .card { background: white; width: 90%; max-width: 500px; margin: 10px auto; padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #eee; }
+        .tab-btn { border:none; background:none; font-size:12px; }
+        .modal { display: none; position: fixed; top:0; left:0; width: 100%; height:100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <div id="view-home">
+        <div style="background:#ffcc00; padding: 20px; text-align:center;"><h3>美团式外卖系统</h3></div>
+        <div id="store-list">加载商家中...</div>
+    </div>
+
+    <div id="view-menu" style="display:none;">
+        <button onclick="document.getElementById('view-menu').style.display='none'; document.getElementById('view-home').style.display='block'">返回首页</button>
+        <div id="menu-list"></div>
+    </div>
+
+    <div class="nav-bar">
+        <button class="tab-btn" onclick="location.reload()">首页</button>
+        <button class="tab-btn">神券</button>
+        <button class="tab-btn">订单</button>
+        <button class="tab-btn">我的</button>
+    </div>
+
+    <script>
+        const client = supabase.createClient("https://dzesfxynbljtkwsbhbvq.supabase.co", "你的Key"); // 记得填入你的Key
+
+        // 模拟加载商家数据
+        async function loadStores() {
+            // 这里你可以去 Supabase 创建一个 'stores' 表
+            // 暂时用模拟数据展示美团卡片样式
+            const stores = [
+                { id: 1, name: "蜜雪冰城", sales: "3000+", time: "43分钟", img: "https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" },
+                { id: 2, name: "牛霸烤肉堡", sales: "700+", time: "58分钟", img: "https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" }
+            ];
+            
+            document.getElementById('store-list').innerHTML = stores.map(s => `
+                <div class="card" onclick="openStore(${s.id})">
+                    <div style="display:flex;">
+                        <img src="${s.img}" style="width:80px; height:80px; border-radius:8px;">
+                        <div style="margin-left:10px;">
+                            <strong>${s.name}</strong>
+                            <p style="font-size:12px; color:#666;">月售 ${s.sales} | 配送约 ${s.time}</p>
+                            <span style="background:#fff3e0; color:#ff9800; padding:2px 5px; font-size:10px;">品质联盟</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openStore(id) {
+            document.getElementById('view-home').style.display = 'none';
+            document.getElementById('view-menu').style.display = 'block';
+            // 这里可以根据 store id 去数据库 load 对应的菜品
+            initMenu(); 
+        }
+
+        async function initMenu() {
+            const { data } = await client.from('products').select('*');
+            document.getElementById('menu-list').innerHTML = data.map(item => `
+                <div class="card"><strong>${item.name}</strong> - ¥${item.price} 
+                <button onclick="alert('已添加')">加购</button></div>
+            `).join('');
+        }
+
+        loadStores();
+    </script>
+</body>
+</html>
