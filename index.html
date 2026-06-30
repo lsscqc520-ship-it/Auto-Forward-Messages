@@ -2,116 +2,140 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>ICBC 聚合外卖平台</title>
+    <title>ICBC 外卖系统</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
-        body { margin: 0; background: #f4f4f4; font-family: sans-serif; padding-bottom: 70px; }
+        body { margin: 0; background: #f8f9fa; font-family: "PingFang SC", sans-serif; padding-bottom: 70px; }
         .tab-view { display: none; } .active { display: block; }
-        .card { background: white; margin: 10px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 60px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #ddd; }
-        /* 支付 UI */
+        .card { background: white; margin: 12px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 60px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #eee; z-index: 999; }
+        
+        /* 图标按钮 */
+        .btn-icon { background: #ffcc00; width: 32px; height: 32px; border-radius: 50%; border: none; font-size: 20px; font-weight: bold; cursor: pointer; }
+        
+        /* 支付弹窗 */
         .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
-        .icbc-box { background: white; width: 85%; border-radius: 12px; text-align: center; }
-        .icbc-header { background: #004a99; color: white; padding: 15px; border-radius: 12px 12px 0 0; }
-        .btn-pay { width: 85%; background: #004a99; color: white; padding: 12px; border-radius: 25px; border: none; margin: 20px 0; }
+        .icbc-box { background: white; width: 85%; border-radius: 15px; text-align: center; padding: 20px; }
+        .btn-pay { background: #004a99; color: white; width: 100%; padding: 12px; border-radius: 25px; border: none; font-size: 16px; margin-top: 15px; }
     </style>
 </head>
 <body>
 
     <div id="view-home" class="tab-view active">
-        <div style="padding:20px; font-weight:bold; font-size:18px;">热门商户</div>
-        <div id="store-list">加载中...</div>
+        <div style="padding:20px; font-weight:bold;">热门商户</div>
+        <div id="store-list"></div>
     </div>
 
     <div id="view-shop" class="tab-view">
-        <div style="padding:20px; font-weight:bold; background:white;" onclick="switchTab('view-home')"> < 返回</div>
-        <div id="shop-name" style="padding:10px 20px; font-size:20px;">店铺名</div>
-        <div id="product-list"></div>
-    </div>
-
-    <div id="view-cart" class="tab-view">
-        <div style="padding:20px; font-weight:bold;">购物车</div>
-        <div id="cart-list"></div>
+        <div style="padding:20px;" onclick="switchTab('view-home')">⬅</div>
+        <div id="shop-title" style="padding:0 20px; font-size:20px; font-weight:bold;"></div>
+        <div id="menu-list" style="padding:10px;"></div>
+        <div class="card">
+            <input id="dish-name" placeholder="菜名" style="border:none; width:40%;">
+            <input id="dish-price" placeholder="价格" style="border:none; width:30%;">
+            <button class="btn-icon" onclick="addDish()">+</button>
+        </div>
     </div>
 
     <div id="view-orders" class="tab-view">
-        <div style="padding:20px; font-weight:bold;">全部订单</div>
+        <div style="padding:20px; font-weight:bold;">订单记录</div>
         <div id="order-list"></div>
+    </div>
+
+    <div id="view-admin" class="tab-view">
+        <div style="padding:20px; font-weight:bold;">系统管理</div>
+        <div class="card">
+            <input id="new-store" placeholder="新建店铺名称" style="border:none; width:70%;">
+            <button class="btn-icon" onclick="addStore()">+</button>
+        </div>
     </div>
 
     <div id="modal-pay" class="modal">
         <div class="icbc-box">
-            <div class="icbc-header">工商银行聚合支付</div>
-            <img src="https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" style="width:150px; margin:20px;">
-            <p>需付款: <b id="pay-amount">¥0</b></p>
-            <button class="btn-pay" onclick="executePayment()">确认支付</button>
+            <div style="color:#004a99; font-weight:bold;">中国工商银行收款</div>
+            <img src="https://i.ibb.co/BKf8xrTP/IMG-1422.jpg" style="width:150px; margin:15px 0;">
+            <div id="pay-total" style="font-size:18px;"></div>
+            <button class="btn-pay" onclick="confirmPay()">确认支付</button>
         </div>
     </div>
 
     <div class="nav-bar">
-        <div onclick="switchTab('view-home')">🏠 首页</div>
-        <div onclick="switchTab('view-cart')">🛒 购物车</div>
-        <div onclick="switchTab('view-orders')">📋 订单</div>
+        <div onclick="switchTab('view-home')">🏠</div>
+        <div onclick="switchTab('view-orders')">📋</div>
+        <div onclick="switchTab('view-admin')">⚙️</div>
     </div>
 
     <script>
-        const client = supabase.createClient("...", "..."); // 填入你的密钥
+        const client = supabase.createClient("https://dzesfxynbljtkwsbhbvq.supabase.co", "sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ");
+        let currentShop = "";
         let cart = [];
 
         function switchTab(id) {
             document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
             document.getElementById(id).classList.add('active');
+            if(id === 'view-home') loadStores();
             if(id === 'view-orders') loadOrders();
         }
 
-        // 1. 加载首页商家 (点击进入店铺)
         async function loadStores() {
             const { data } = await client.from('stores').select('*');
             document.getElementById('store-list').innerHTML = data?.map(s => `
                 <div class="card" onclick="enterShop('${s.name}')">
                     <h3>${s.name}</h3>
-                    <span>进入店铺 ></span>
                 </div>
-            `).join('');
+            `).join('') || '暂无店铺';
         }
 
-        // 2. 进入店铺显示菜品
         function enterShop(name) {
-            document.getElementById('shop-name').innerText = name;
+            currentShop = name;
+            document.getElementById('shop-title').innerText = name;
             switchTab('view-shop');
-            // 模拟菜品
-            document.getElementById('product-list').innerHTML = `
-                <div class="card">菜品A - ¥15 <button onclick="addToCart('菜品A', 15)">加入</button></div>
-                <div class="card">菜品B - ¥20 <button onclick="addToCart('菜品B', 20)">加入</button></div>
-            `;
+            loadMenu();
         }
 
-        function addToCart(name, price) {
-            cart.push({name, price});
-            alert("已加入购物车");
+        async function loadMenu() {
+            const { data } = await client.from('menu').select('*').eq('store_name', currentShop);
+            document.getElementById('menu-list').innerHTML = data?.map(m => `
+                <div class="card">
+                    <div>${m.name} <br> <b style="color:red;">¥${m.price}</b></div>
+                    <button class="btn-icon" onclick="startPayment('${m.name}', ${m.price})">下单</button>
+                </div>
+            `).join('') || '暂无菜品';
         }
 
-        // 3. 购物车结算
-        function showCart() {
-            switchTab('view-cart');
-            const total = cart.reduce((sum, item) => sum + item.price, 0);
-            document.getElementById('cart-list').innerHTML = `
-                ${cart.map(i => `<div class="card">${i.name} - ¥${i.price}</div>`).join('')}
-                <div class="card">总计: ¥${total} <button class="btn-pay" onclick="openPay(${total})">结算</button></div>
-            `;
-        }
-
-        function openPay(amount) {
-            document.getElementById('pay-amount').innerText = "¥" + amount;
+        function startPayment(name, price) {
+            document.getElementById('pay-total').innerText = "应付: ¥" + price;
             document.getElementById('modal-pay').style.display = 'flex';
+            cart = [{name, price}];
         }
 
-        async function executePayment() {
-            await client.from('orders').insert([{ items: JSON.stringify(cart), status: 'paid' }]);
+        async function confirmPay() {
+            await client.from('orders').insert([{ items: currentShop + ":" + cart[0].name, status: 'paid' }]);
             alert("支付成功");
-            cart = [];
             document.getElementById('modal-pay').style.display = 'none';
             switchTab('view-orders');
+        }
+
+        async function addStore() {
+            const name = document.getElementById('new-store').value;
+            await client.from('stores').insert([{ name }]);
+            alert("已创建");
+            loadStores();
+        }
+
+        async function addDish() {
+            const name = document.getElementById('dish-name').value;
+            const price = document.getElementById('dish-price').value;
+            await client.from('menu').insert([{ store_name: currentShop, name, price }]);
+            alert("已录入");
+            loadMenu();
+        }
+
+        async function loadOrders() {
+            const { data } = await client.from('orders').select('*');
+            document.getElementById('order-list').innerHTML = data?.map(o => `
+                <div class="card"><div>${o.items}</div><div style="color:green;">已收款</div></div>
+            `).join('') || '暂无记录';
         }
 
         loadStores();
