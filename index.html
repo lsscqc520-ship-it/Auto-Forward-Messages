@@ -444,7 +444,7 @@ async function prepareAdminForm() {
   select.innerHTML = '<option value="">正在加载商家...</option>';
   
   try {
-    const { data } = await， client.from('stores').select('*').order('name');
+    const { data } = await client.from('stores').select('*').order('name');
     if (!data || data.length === 0) {
       select.innerHTML = '<option value="">请先创建商家</option>';
       return;
@@ -505,5 +505,3 @@ if (client) {
 </script>
 </body>
 </html>
-
-
