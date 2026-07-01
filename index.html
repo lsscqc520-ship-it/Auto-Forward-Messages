@@ -7,64 +7,82 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{ --bg:#f5f5f5; --primary:#ffd000; }
-body{margin:0;font-family:sans-serif;background:var(--bg)}
-.nav{display:flex;padding:10px;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:100}
-.nav-item{padding:8px 15px;cursor:pointer;font-weight:bold}
-.nav-item.active{color:#000;border-bottom:2px solid var(--primary)}
-.tab-view{display:none;padding:15px}
-.tab-view.active{display:block}
-.card{background:#fff;border-radius:15px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
-.btn{width:100%;padding:15px;border:0;border-radius:25px;font-weight:bold;cursor:pointer;margin-top:10px}
+body{margin:0;font-family:sans-serif;background:var(--bg);padding-bottom:50px}
+.nav{padding:15px;background:#fff;font-weight:bold;border-bottom:1px solid #eee;position:sticky;top:0;z-index:100}
+.card{background:#fff;border-radius:15px;padding:20px;margin:15px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.btn{width:100%;padding:12px;border:0;border-radius:10px;font-weight:bold;cursor:pointer;margin-top:10px;background:#eee}
 .btn-primary{background:var(--primary);color:#000}
+input{width:100%;padding:12px;border:1px solid #eee;border-radius:10px;margin-top:10px;box-sizing:border-box}
 </style>
 </head>
 <body>
 
-<div class="nav">
-  <div class="nav-item active" data-tab="orders">📋 待代付订单</div>
+<div class="nav">📋 订单代付系统</div>
+
+<div class="card">
+  <h3>⚡ 快捷点餐</h3>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+    <button class="btn" onclick="setOrder(19.8, '牛肉丸汤')">牛肉丸 ¥19.8</button>
+    <button class="btn" onclick="setOrder(39.0, '特色套餐')">套餐 ¥39.0</button>
+    <button class="btn" onclick="setOrder(82.8, '豪华外卖')">外卖 ¥82.8</button>
+    <button class="btn" onclick="setOrder(88.0, '超级大餐')">大餐 ¥88.0</button>
+  </div>
+  <input type="number" id="custom-amount" placeholder="输入自定义金额 (1-999)">
+  <button class="btn btn-primary" onclick="createCustomOrder()">创建订单</button>
 </div>
 
-<div id="orders" class="tab-view active">
-  <div id="order-list">加载中...</div>
-</div>
+<div id="order-list"></div>
 
 <script>
-// 配置区域
 const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk';
-// 这里填入你提取出来的支付宝二维码链接
 const MY_ALIPAY_LINK = 'https://qr.alipay.com/fkx14343tq2hks1lq1v2z99'; 
 
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentAmount = 82.8;
+
+function setOrder(amount, name) {
+  currentAmount = amount;
+  document.getElementById('custom-amount').value = amount;
+}
+
+async function createCustomOrder() {
+  const amount = parseFloat(document.getElementById('custom-amount').value || currentAmount);
+  if (amount < 1 || amount > 999) return alert("金额请控制在 1-999 之间");
+
+  const { error } = await client.from('orders').insert([{ total: amount, status: '待支付' }]);
+  if (!error) {
+    alert('订单已创建！');
+    fetchOrders();
+  } else {
+    alert('创建失败: ' + error.message);
+  }
+}
 
 async function fetchOrders() {
   const { data } = await client.from('orders').select('*').order('id', { ascending: false });
   const container = document.getElementById('order-list');
   
   if (!data || data.length === 0) {
-    container.innerHTML = '<div class="card">暂无代付订单</div>';
+    container.innerHTML = '<div class="card">暂无订单</div>';
     return;
   }
 
   container.innerHTML = data.map(order => `
     <div class="card">
       <div style="font-size:14px;color:#888;">需付款</div>
-      <div style="font-size:28px;font-weight:bold;margin:10px 0;">¥${Number(order.total || 82.80).toFixed(2)}</div>
-      <div style="background:#fff3bf;padding:10px;border-radius:8px;font-size:12px;margin-bottom:15px;">
-        付款须知：<br>1. 代付订单创建后，请于15分钟内完成支付。<br>2. 支付后请点击下方按钮确认。
-      </div>
-      <a href="${MY_ALIPAY_LINK}" target="_blank">
-        <button class="btn btn-primary">为好友买单</button>
-      </a>
-      <button class="btn" style="background:#eee" onclick="simulatePay(${order.id})">我已支付，点击确认</button>
+      <div style="font-size:24px;font-weight:bold;margin:5px 0;">¥${Number(order.total).toFixed(2)}</div>
+      <a href="${MY_ALIPAY_LINK}" target="_blank"><button class="btn btn-primary">为好友买单</button></a>
+      <button class="btn" onclick="simulatePay(${order.id})">我已支付，点击确认</button>
     </div>
   `).join('');
 }
 
 async function simulatePay(id) {
-  alert('支付验证中... 请确保您已完成支付宝转账。');
   await client.from('orders').update({ status: '已支付' }).eq('id', id);
-  location.reload();
+  alert('订单已确认！');
+  fetchOrders();
 }
 
 fetchOrders();
