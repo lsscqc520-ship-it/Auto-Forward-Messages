@@ -21,7 +21,7 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}
 .nav{display:flex;gap:10px;padding:14px 12px;background:linear-gradient(135deg,#111,#2b2b2b);position:sticky;top:0;z-index:10;overflow:auto}
-.nav-item{padding:10px 14px;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;font-weight:700;white-space:nowrap}
+.nav-item{padding:10px 14px;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;font-weight:700;white-space:nowrap;user-select:none;}
 .nav-item.active{background:var(--primary);color:#111}
 .tab-view{display:none;padding:14px;max-width:1100px;margin:0 auto}
 .tab-view.active{display:block}
@@ -40,6 +40,7 @@ input:focus,select:focus{border-color:#ffcf33;box-shadow:0 0 0 4px rgba(255,208,
 #order-detail{background:linear-gradient(180deg,#fff,#fffdf2);border:1px solid #ffe58f}
 .card b{font-size:16px}
 .card .muted{font-size:13px}
+.flex-between{display:flex;justify-content:space-between;align-items:center;}
 @media (max-width:640px){
   .tab-view{padding:12px}
   h2{font-size:20px}
@@ -65,8 +66,8 @@ input:focus,select:focus{border-color:#ffcf33;box-shadow:0 0 0 4px rgba(255,208,
 
 <div id="view-cart" class="tab-view">
   <h2>购物车</h2>
-  <div class="card">
-    共 <b id="cart-count">0</b> 件，合计 ¥<b id="cart-total">0.00</b>
+  <div class="card flex-between">
+    <div>共 <b id="cart-count">0</b> 件，合计 ¥<b id="cart-total">0.00</b></div>
     <button class="btn p" onclick="checkout()">提交订单</button>
   </div>
   <div id="cart-list" class="muted">购物车为空</div>
@@ -74,8 +75,8 @@ input:focus,select:focus{border-color:#ffcf33;box-shadow:0 0 0 4px rgba(255,208,
 
 <div id="view-orders" class="tab-view">
   <h2>订单</h2>
-  <div id="order-detail" class="card muted">点击“查看详情”查看订单明细</div>
-  <div id="order-list" class="muted">暂无订单</div>
+  <div id="order-detail" class="card muted">点击订单可查看支付链接</div>
+  <div id="order-list" class="muted">加载中...</div>
 </div>
 
 <div id="view-admin" class="tab-view">
@@ -87,14 +88,166 @@ input:focus,select:focus{border-color:#ffcf33;box-shadow:0 0 0 4px rgba(255,208,
 </div>
 
 <script>
-const SUPABASE_URL='https://dzesfxynbljtkwsbhbvq.supabase.co';
-const SUPABASE_KEY='sb_publishable_sRewE8k63terKgMBcBV3wQ_0LKBXpNZ';
-const ALIPAY_PAY_URL='https://ibb.co/pr1C8R4P';
-const client=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+// 初始化 Supabase
+const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk';
+const ALIPAY_PAY_URL = 'https://ibb.co/pr1C8R4P';
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let cart={};
-let ordersCache=[];
-let ordersPoller=null;
+// 全局状态
+let cart = {}; 
 
-const esc=t=>String(t??'').replace(/[&<>"']/g,m=>({
-  '&':'&amp;','<':'&a
+// 工具函数：防止 XSS 注入
+const esc = t => String(t ?? '').replace(/[&<>"']/g, m => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[m]));
+
+// --- 导航栏切换逻辑 ---
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    // 移除所有 active 类
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
+    // 添加当前 active 类
+    item.classList.add('active');
+    const tabId = item.getAttribute('data-tab');
+    document.getElementById(tabId).classList.add('active');
+    
+    // 切换到特定 tab 时刷新数据
+    if(tabId === 'view-stores') fetchStores();
+    if(tabId === 'view-orders') fetchOrders();
+  });
+});
+
+// --- 商家模块 ---
+async function fetchStores() {
+  document.getElementById('store-list').innerHTML = '加载中...';
+  const { data, error } = await client.from('stores').select('*').order('id', { ascending: false });
+  
+  if (error) {
+    document.getElementById('store-list').innerHTML = `<div class="card d">获取商家失败: ${esc(error.message)}</div>`;
+    return;
+  }
+  if (!data || data.length === 0) {
+    document.getElementById('store-list').innerHTML = '暂无商家，请前往“管理”页面添加。';
+    return;
+  }
+
+  // 渲染商家列表（假设统一价格为 10.00 元）
+  document.getElementById('store-list').innerHTML = data.map(store => `
+    <div class="card flex-between">
+      <div>
+        <b>${esc(store.name)}</b> 
+        <br/><span class="muted">¥10.00</span>
+      </div>
+      <button class="btn w" onclick="addToCart(${store.id}, '${esc(store.name)}', 10)">+ 购物车</button>
+    </div>
+  `).join('');
+}
+
+async function addStore() {
+  const input = document.getElementById('store-input');
+  const name = input.value.trim();
+  if (!name) return alert('请输入商家名称');
+
+  const { error } = await client.from('stores').insert([{ name: name }]);
+  if (error) {
+    alert('添加失败: ' + error.message);
+  } else {
+    alert('添加成功！');
+    input.value = '';
+    fetchStores(); // 刷新列表
+  }
+}
+
+// --- 购物车模块 ---
+function addToCart(id, name, price) {
+  if (cart[id]) {
+    cart[id].count += 1;
+  } else {
+    cart[id] = { name, price, count: 1 };
+  }
+  updateCartUI();
+  alert(`已将 ${name} 加入购物车`);
+}
+
+function updateCartUI() {
+  const list = document.getElementById('cart-list');
+  let totalCount = 0;
+  let totalPrice = 0;
+  let html = '';
+
+  for (const id in cart) {
+    const item = cart[id];
+    totalCount += item.count;
+    totalPrice += item.price * item.count;
+    html += `
+      <div class="card flex-between">
+        <div><b>${item.name}</b> <span class="muted">x ${item.count}</span></div>
+        <div>¥${(item.price * item.count).toFixed(2)}</div>
+      </div>
+    `;
+  }
+
+  document.getElementById('cart-count').innerText = totalCount;
+  document.getElementById('cart-total').innerText = totalPrice.toFixed(2);
+  list.innerHTML = html || '购物车为空';
+}
+
+async function checkout() {
+  const items = Object.values(cart);
+  if (items.length === 0) return alert('购物车是空的！');
+
+  const totalPrice = items.reduce((sum, item) => sum + (item.price * item.count), 0);
+  const content = items.map(i => `${i.name} x${i.count}`).join(', ');
+
+  const { error } = await client.from('orders').insert([{ 
+    content: content, 
+    total: totalPrice 
+  }]);
+
+  if (error) {
+    alert('提交订单失败: ' + error.message);
+  } else {
+    alert('订单提交成功！请在订单页面完成支付。');
+    cart = {}; // 清空购物车
+    updateCartUI();
+    // 自动跳转到订单页
+    document.querySelector('[data-tab="view-orders"]').click();
+  }
+}
+
+// --- 订单模块 ---
+async function fetchOrders() {
+  document.getElementById('order-list').innerHTML = '加载中...';
+  const { data, error } = await client.from('orders').select('*').order('id', { ascending: false });
+  
+  if (error) {
+    document.getElementById('order-list').innerHTML = `<div class="card d">获取订单失败: ${esc(error.message)}</div>`;
+    return;
+  }
+  if (!data || data.length === 0) {
+    document.getElementById('order-list').innerHTML = '暂无订单';
+    return;
+  }
+
+  document.getElementById('order-list').innerHTML = data.map(order => `
+    <div class="card">
+      <div class="flex-between">
+        <b>订单号: #${order.id}</b>
+        <b style="color:var(--danger)">¥${Number(order.total).toFixed(2)}</b>
+      </div>
+      <div class="muted" style="margin: 8px 0;">${esc(order.content)}</div>
+      <a href="${ALIPAY_PAY_URL}" target="_blank" style="text-decoration:none;">
+        <button class="btn g" style="width:100%">前往支付</button>
+      </a>
+    </div>
+  `).join('');
+}
+
+// 页面初始化加载数据
+fetchStores();
+
+</script>
+</body>
+</html>
