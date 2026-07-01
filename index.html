@@ -14,6 +14,7 @@
 </head>
 <body>
 
+<!-- 1. 点餐区 -->
 <div id="order-view">
     <div class="card">
         <h3>🍴 请选择菜品</h3>
@@ -28,6 +29,7 @@
     </div>
 </div>
 
+<!-- 2. 好友支付区 -->
 <div id="pay-view" style="display:none;">
     <div class="card">
         <h3>😋 好友代付请求</h3>
@@ -38,8 +40,8 @@
 </div>
 
 <script>
-    // 更新后的最新收款码链接
-    const ALIPAY_QR_URL = "https://ibb.co/kT3vZYC";
+    // 已更新为你提供的支付宝原始链接
+    const ALIPAY_QR_URL = "https://qr.alipay.com/2m612342txzv1x1aorosqa0";
     let selectedName = "自定义点餐";
 
     function setData(p, name) { 
@@ -53,7 +55,6 @@
         const name = selectedName;
         if(!val) return alert("请先选择菜品或金额");
         
-        // 将金额和名字同时编码进链接
         const shareUrl = window.location.origin + window.location.pathname + 
                          "?amount=" + val + "&name=" + encodeURIComponent(name);
         
@@ -71,7 +72,7 @@
         }
     }
 
-    // 路由：检查参数并显示信息
+    // 路由逻辑
     const params = new URLSearchParams(window.location.search);
     const amount = params.get('amount');
     const name = params.get('name');
@@ -85,8 +86,11 @@
 
     // 唤醒支付宝
     function wakeUpAlipay() {
+        // 使用标准的 alipays 协议唤醒支付宝 App
         const scheme = `alipays://platformapi/startapp?saId=10000007&qrcode=${encodeURIComponent(ALIPAY_QR_URL)}`;
         window.location.href = scheme;
+        
+        // 兜底方案
         setTimeout(() => {
             if(confirm("未自动跳转？点确定手动打开支付页面")) {
                 window.open(ALIPAY_QR_URL, '_blank');
