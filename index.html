@@ -128,14 +128,27 @@ input:focus,select:focus{border-color:#ffcf33;box-shadow:0 0 0 4px rgba(255,208,
 </div>
 
 <script>
+// 📊 预检查：防止 CDN 被手机网络环境屏蔽
+if (typeof supabase === 'undefined') {
+  document.getElementById('store-list').innerHTML = `
+    <div class="card d" style="padding: 20px;">
+      <h3>⚠️ 关键环境加载失败</h3>
+      <p>原因：手机当前网络拦截了数据库组件（Supabase CDN）。</p>
+      <p><b>解决办法：</b>请尝试切换手机网络（如有Wi-Fi换流量，有流量换Wi-Fi），或开启/关闭代理后再刷新页面重试。</p>
+    </div>
+  `;
+}
+
 const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6ZXNmeHluYmxqdGt3c2JoYnZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2OTI1NjksImV4cCI6MjA5ODI2ODU2OX0.fcpHEdZUqNABHa1fZ0AJtkucwj-MYRPuSzDoQxkkLLk';
 const ALIPAY_PAY_URL = 'https://ibb.co/pr1C8R4P';
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 👑 在这里指定谁是管理员！你可以修改这个邮箱地址
+let client = null;
+if (typeof supabase !== 'undefined') {
+  client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
+
 const ADMIN_EMAIL = 'admin@qq.com'; 
-
 let cart = {}; 
 let allStoresCache = [];
 let currentUser = null;
@@ -144,11 +157,13 @@ const esc = t => String(t ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[m]));
 
-// --- 账户状态监听器 ---
-client.auth.onAuthStateChange((event, session) => {
-  currentUser = session?.user || null;
-  updateAuthUI();
-});
+// --- 账户状态监听 ---
+if (client) {
+  client.auth.onAuthStateChange((event, session) => {
+    currentUser = session?.user || null;
+    updateAuthUI();
+  });
+}
 
 function updateAuthUI() {
   const navAdmin = document.getElementById('nav-admin');
@@ -162,7 +177,6 @@ function updateAuthUI() {
     loggedInCard.style.display = 'block';
     document.getElementById('user-display-email').innerText = currentUser.email;
     
-    // 判断是否是管理员
     if (currentUser.email === ADMIN_EMAIL) {
       navAdmin.style.display = 'block';
       document.getElementById('user-display-role').innerText = '👑 超级管理员';
@@ -171,7 +185,6 @@ function updateAuthUI() {
       navAdmin.style.display = 'none';
       document.getElementById('user-display-role').innerText = '普通用户';
       document.getElementById('user-display-role').style.color = 'var(--success)';
-      // 如果当前呆在管理页，强行踢回首页
       if(document.getElementById('view-admin').classList.contains('active')) {
         document.querySelector('[data-tab="view-stores"]').click();
       }
@@ -204,51 +217,70 @@ document.querySelectorAll('.nav-item').forEach(item => {
 
 // --- 登录/注册处理 ---
 async function handleAuth(type) {
+  if (!client) return alert('数据库服务未就绪，请刷新页面');
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   
   if(!email || !password) return alert('请输入完整的邮箱和密码！');
   
-  if(type === 'signup') {
-    const { data, error } = await client.auth.signUp({ email, password });
-    if(error) alert('注册失败: ' + error.message);
-    else alert('注册成功！已自动为您登录。');
-  } else {
-    const { data, error } = await client.auth.signInWithPassword({ email, password });
-    if(error) alert('登录失败: ' + error.message);
-    else alert('登录成功！欢迎回来。');
+  try {
+    if(type === 'signup') {
+      const { error } = await client.auth.signUp({ email, password });
+      if(error) alert('注册失败: ' + error.message);
+      else alert('注册成功！已自动为您登录。');
+    } else {
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if(error) alert('登录失败: ' + error.message);
+      else alert('登录成功！欢迎回来。');
+    }
+  } catch(e) {
+    alert('认证请求发生系统错误: ' + e.message);
   }
 }
 
 async function handleSignOut() {
-  await client.auth.signOut();
-  alert('已退出登录');
+  if (client) {
+    await client.auth.signOut();
+    alert('已退出登录');
+  }
 }
 
-// --- 1. 商家列表逻辑 ---
+// --- 1. 商家列表逻辑（全方位防卡死包裹） ---
 async function fetchStores() {
   document.getElementById('stores-header').innerHTML = '<h2>商家列表</h2>';
   document.getElementById('store-list').innerHTML = '加载中...';
   
-  const { data, error } = await client.from('stores').select('*').order('id', { ascending: false });
-  if (error) {
-    document.getElementById('store-list').innerHTML = `<div class="card d">获取失败: ${esc(error.message)}</div>`;
-    return;
-  }
-  allStoresCache = data || [];
-  if (allStoresCache.length === 0) {
-    document.getElementById('store-list').innerHTML = '暂无商家，请前往“管理”页面添加。';
-    return;
-  }
+  if (!client) return;
 
-  document.getElementById('store-list').innerHTML = allStoresCache.map(store => `
-    <div class="card flex-between clickable" onclick="fetchProducts(${store.id}, '${esc(store.name)}')">
-      <div>
-        <b>${esc(store.name)}</b>
-        <br/><span class="muted" style="font-size:12px;">点击进入查看菜单 ➡️</span>
+  try {
+    const { data, error } = await client.from('stores').select('*').order('id', { ascending: false });
+    if (error) {
+      document.getElementById('store-list').innerHTML = `<div class="card d">获取失败: ${esc(error.message)}</div>`;
+      return;
+    }
+    allStoresCache = data || [];
+    if (allStoresCache.length === 0) {
+      document.getElementById('store-list').innerHTML = '<div class="card">暂无商家。如果是新系统，请先点击右上角【登录/注册】登录 admin@qq.com，前往【管理】后台添加商家。</div>';
+      return;
+    }
+
+    document.getElementById('store-list').innerHTML = allStoresCache.map(store => `
+      <div class="card flex-between clickable" onclick="fetchProducts(${store.id}, '${esc(store.name)}')">
+        <div>
+          <b>${esc(store.name)}</b>
+          <br/><span class="muted" style="font-size:12px;">点击进入查看菜单 ➡️</span>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+  } catch (err) {
+    document.getElementById('store-list').innerHTML = `
+      <div class="card d">
+        <h3>❌ 无法连接到数据库</h3>
+        <p>详细错误：${esc(err.message || err)}</p>
+        <p>提示：通常是由于手机当前网络请求跨域或连接 Supabase 服务器超时引起的。请尝试切换网络环境。</p>
+      </div>
+    `;
+  }
 }
 
 // --- 2. 菜单列表逻辑 ---
@@ -259,25 +291,29 @@ async function fetchProducts(storeId, storeName) {
   `;
   document.getElementById('store-list').innerHTML = '正在载入菜单...';
 
-  const { data, error } = await client.from('products').select('*').eq('store_id', storeId).order('id', { ascending: false });
-  if (error) {
-    document.getElementById('store-list').innerHTML = `<div class="card d">获取菜单失败: ${esc(error.message)}</div>`;
-    return;
-  }
-  if (!data || data.length === 0) {
-    document.getElementById('store-list').innerHTML = '<div class="card">该商家太懒了，还没有上架任何商品。快叫管理员上架！</div>';
-    return;
-  }
+  try {
+    const { data, error } = await client.from('products').select('*').eq('store_id', storeId).order('id', { ascending: false });
+    if (error) {
+      document.getElementById('store-list').innerHTML = `<div class="card d">获取菜单失败: ${esc(error.message)}</div>`;
+      return;
+    }
+    if (!data || data.length === 0) {
+      document.getElementById('store-list').innerHTML = '<div class="card">该商家太懒了，还没有上架任何商品。快叫管理员上架！</div>';
+      return;
+    }
 
-  document.getElementById('store-list').innerHTML = data.map(product => `
-    <div class="card flex-between">
-      <div>
-        <b>${esc(product.name)}</b>
-        <br/><span style="color:var(--danger); font-weight:bold;">¥${Number(product.price).toFixed(2)}</span>
+    document.getElementById('store-list').innerHTML = data.map(product => `
+      <div class="card flex-between">
+        <div>
+          <b>${esc(product.name)}</b>
+          <br/><span style="color:var(--danger); font-weight:bold;">¥${Number(product.price).toFixed(2)}</span>
+        </div>
+        <button class="btn p" style="width:auto;" onclick="addToCart(${product.id}, '${esc(product.name)}', ${product.price})">+ 购物车</button>
       </div>
-      <button class="btn p" style="width:auto;" onclick="addToCart(${product.id}, '${esc(product.name)}', ${product.price})">+ 购物车</button>
-    </div>
-  `).join('');
+    `).join('');
+  } catch (err) {
+    document.getElementById('store-list').innerHTML = `<div class="card d">请求菜单时发生异常: ${esc(err.message || err)}</div>`;
+  }
 }
 
 // --- 3. 购物车逻辑 ---
@@ -308,7 +344,6 @@ function updateCartUI() {
   list.innerHTML = html || '购物车为空';
 }
 
-// --- 核心修复：提交订单对齐数据库 ---
 async function checkout() {
   if (!currentUser) {
     alert('请先点击右上角去登录账号，才可以下单哦！');
@@ -322,36 +357,151 @@ async function checkout() {
   const totalPrice = items.reduce((sum, item) => sum + (item.price * item.count), 0);
   const content = items.map(i => `${i.name} x${i.count}`).join(', ');
 
-  // 🛠️ 对齐你的数据库：注入 content、items 并且初始化 status 为 待支付
-  const { error } = await client.from('orders').insert([{ 
-    content: content, 
-    items: content, 
-    total: totalPrice,
-    status: '待支付'
-  }]);
+  try {
+    const { error } = await client.from('orders').insert([{ 
+      content: content, 
+      items: content, 
+      total: totalPrice,
+      status: '待支付'
+    }]);
 
-  if (error) {
-    alert('提交订单失败: ' + error.message);
-  } else {
-    alert('订单提交成功！请去订单页面完成支付。');
-    cart = {}; 
-    updateCartUI();
-    document.querySelector('[data-tab="view-orders"]').click();
+    if (error) {
+      alert('提交订单失败: ' + error.message);
+    } else {
+      alert('订单提交成功！请去订单页面完成支付。');
+      cart = {}; 
+      updateCartUI();
+      document.querySelector('[data-tab="view-orders"]').click();
+    }
+  } catch (err) {
+    alert('提交订单异常: ' + err.message);
   }
 }
 
 // --- 4. 订单列表与模拟支付逻辑 ---
 async function fetchOrders() {
   document.getElementById('order-list').innerHTML = '加载中...';
-  const { data, error } = await client.from('orders').select('*').order('id', { ascending: false });
-  
-  if (error) {
-    document.getElementById('order-list').innerHTML = `<div class="card d">获取失败: ${esc(error.message)}</div>`;
-    return;
+  try {
+    const { data, error } = await client.from('orders').select('*').order('id', { ascending: false });
+    
+    if (error) {
+      document.getElementById('order-list').innerHTML = `<div class="card d">获取失败: ${esc(error.message)}</div>`;
+      return;
+    }
+    if (!data || data.length === 0) {
+      document.getElementById('order-list').innerHTML = '暂无订单';
+      return;
+    }
+
+    document.getElementById('order-list').innerHTML = data.map(order => {
+      const isPaid = order.status === '已支付';
+      return `
+        <div class="card">
+          <div class="flex-between">
+            <b>订单号: #${order.id}</b>
+            <span class="badge ${isPaid ? 'success' : 'wait'}">${esc(order.status || '待支付')}</span>
+          </div>
+          <div class="muted" style="margin: 8px 0; font-size:14px;">${esc(order.content || order.items)}</div>
+          <div class="flex-between" style="margin-top:10px; gap:10px;">
+            <b style="color:var(--danger); font-size:18px;">¥${Number(order.total).toFixed(2)}</b>
+            ${isPaid ? '' : `
+              <div style="display:flex; gap:6px; width:70%;">
+                <a href="${ALIPAY_PAY_URL}" target="_blank" style="flex:1;"><button class="btn w" style="width:100%; padding:6px 10px;">二维码</button></a>
+                <button class="btn g" style="flex:2; padding:6px 10px;" onclick="simulatePay(${order.id})">💸 模拟支付成功</button>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    document.getElementById('order-list').innerHTML = `<div class="card d">加载订单异常: ${esc(err.message || err)}</div>`;
   }
-  if (!data || data.length === 0) {
-    document.getElementById('order-list').innerHTML = '暂无订单';
+}
+
+async function simulatePay(orderId) {
+  try {
+    const { error } = await client.from('orders').update({ status: '已支付' }).eq('id', orderId);
+    if(error) alert('支付失败: ' + error.message);
+    else {
+      alert('🎉 模拟支付成功！订单已更新为已支付状态。');
+      fetchOrders();
+    }
+  } catch (err) {
+    alert('支付操作异常: ' + err.message);
+  }
+}
+
+// --- 5. 管理后台控制 ---
+async function prepareAdminForm() {
+  if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+    alert('越权访问！只有管理员可以操作系统。');
+    document.querySelector('[data-tab="view-stores"]').click();
     return;
   }
 
-  document.getElementById('order-list').innerHTML = data.map(order =>
+  const select = document.getElementById('admin-store-select');
+  select.innerHTML = '<option value="">正在加载商家...</option>';
+  
+  try {
+    const { data } = await client.from('stores').select('*').order('name');
+    if (!data || data.length === 0) {
+      select.innerHTML = '<option value="">请先创建商家</option>';
+      return;
+    }
+    select.innerHTML = '<option value="">请选择商家...</option>' + 
+      data.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+  } catch (err) {
+    select.innerHTML = '<option value="">加载商家失败</option>';
+  }
+}
+
+async function addStore() {
+  if (!currentUser || currentUser.email !== ADMIN_EMAIL) return alert('无权操作');
+  const input = document.getElementById('store-input');
+  const name = input.value.trim();
+  if (!name) return alert('请输入商家名称');
+
+  try {
+    const { error } = await client.from('stores').insert([{ name }]);
+    if (error) alert('添加失败: ' + error.message);
+    else {
+      alert('商家添加成功！');
+      input.value = '';
+      prepareAdminForm();
+    }
+  } catch (err) {
+    alert('添加商家异常: ' + err.message);
+  }
+}
+
+async function addProduct() {
+  if (!currentUser || currentUser.email !== ADMIN_EMAIL) return alert('无权操作');
+  const storeId = document.getElementById('admin-store-select').value;
+  const name = document.getElementById('product-name-input').value.trim();
+  const price = parseFloat(document.getElementById('product-price-input').value);
+
+  if (!storeId) return alert('请选择所属商家');
+  if (!name) return alert('请输入商品名称');
+  if (isNaN(price) || price <= 0) return alert('请输入有效的商品价格');
+
+  try {
+    const { error } = await client.from('products').insert([{ name, price, store_id: storeId }]);
+    if (error) alert('添加商品失败: ' + error.message);
+    else {
+      alert('商品上架成功！');
+      document.getElementById('product-name-input').value = '';
+      document.getElementById('product-price-input').value = '';
+    }
+  } catch (err) {
+    alert('添加商品异常: ' + err.message);
+  }
+}
+
+// 初始化启动
+if (client) {
+  fetchStores();
+}
+</script>
+</body>
+</html>
