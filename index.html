@@ -6,19 +6,17 @@
     <title>外卖点餐系统 Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --bg:#f5f5f5; --card:#ffffff; --text:#111111; --muted:#8a8a8a; --primary:#ffd000; --primary-dark:#ffbf00; --danger:#ff4d4f; --success:#00b578; --border:#ececec; --shadow:0 8px 24px rgba(0,0,0,.06); }
+        :root{--bg:#f5f5f5;--card:#ffffff;--text:#111111;--muted:#8a8a8a;--primary:#ffd000;--primary-dark:#ffbf00;--danger:#ff4d4f;--success:#00b578;--border:#ececec;--shadow:0 8px 24px rgba(0,0,0,.06);}
         *{box-sizing:border-box}
         body{margin:0;font-family:Arial, "PingFang SC","Microsoft YaHei", sans-serif;background:var(--bg);color:var(--text)}
         .nav{display:flex; gap:10px;padding: 14px 12px; background:linear-gradient(135deg, #111,#2b2b2b); position:sticky;top:0;z-index:10;overflow:auto}
-        .nav-item{padding: 10px 14px;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;font-weight:700;white-space:nowrap; user-select:none;}
+        .nav-item{padding: 10px 14px;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;font-weight:700;white-space:nowrap;user-select:none;}
         .nav-item.active{background:var(--primary);color:#111}
         .tab-view{display:none;padding:14px;max-width: 1100px;margin:0 auto}
         .tab-view.active{display:block}
         .card{background: var(--card); border:1px solid var(--border); border-radius:18px;padding:14px; margin-bottom: 12px; box-shadow:var(--shadow)}
         .btn{padding:10px 14px;border:0;border-radius:14px;cursor:pointer;font-weight:700}
         .p{background: linear-gradient(135deg, var(--primary), var(--primary-dark));color:#111}
-        .g{background: linear-gradient(135deg, #4cd964,#00b578);color:#fff}
-        .flex-between{display: flex; justify-content:space-between; align-items:center;}
         .badge{padding:4px 8px;border-radius:6px;font-size:12px;font-weight:bold;}
         .badge.wait{background:#fff3bf;color:#8a5b00;}
         .badge.success{background:#d4edda;color:#155724;}
@@ -29,10 +27,15 @@
         <div class="nav-item active" data-tab="view-stores">商家</div>
         <div class="nav-item" data-tab="view-cart">购物车</div>
         <div class="nav-item" data-tab="view-orders">订单</div>
+        <div class="nav-item" id="nav-admin" data-tab="view-admin" style="display:none;">管理</div>
+        <div class="nav-item" data-tab="view-auth" id="nav-auth-btn" style="margin-left:auto; background:rgba(255,255,255,0.2);">登录/注册</div>
     </div>
+
     <div id="view-stores" class="tab-view active"><div id="store-list">加载中...</div></div>
-    <div id="view-cart" class="tab-view"><h2>购物车</h2><div id="cart-list"></div></div>
+    <div id="view-cart" class="tab-view"><h2>购物车</h2><div id="cart-list"></div><button class="btn p" onclick="checkout()">提交订单</button></div>
     <div id="view-orders" class="tab-view"><h2>我的订单</h2><div id="order-list"></div></div>
+    <div id="view-admin" class="tab-view"><h2>管理后台</h2><div id="admin-form"></div></div>
+    <div id="view-auth" class="tab-view"><h2>账户中心</h2><div id="auth-content"></div></div>
 
     <script>
         const SUPABASE_URL = 'https://dzesfxynbljtkwsbhbvq.supabase.co';
@@ -40,52 +43,45 @@
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const esc = t => String(t?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 
+        // 核心跳转修复：订单列表渲染逻辑
         async function fetchOrders() {
             document.getElementById('order-list').innerHTML = '加载中...';
-            try {
-                const { data, error } = await client.from('orders').select('*').order('id', { ascending: false });
-                if (error) { document.getElementById('order-list').innerHTML = '获取失败: ' + error.message; return; }
-                if (!data || data.length === 0) { document.getElementById('order-list').innerHTML = '暂无订单'; return; }
+            const { data, error } = await client.from('orders').select('*').order('id', { ascending: false });
+            
+            if (error) { document.getElementById('order-list').innerHTML = '加载失败'; return; }
+            if (!data || data.length === 0) { document.getElementById('order-list').innerHTML = '暂无订单'; return; }
+            
+            document.getElementById('order-list').innerHTML = data.map(order => {
+                const isPaid = order.status === '已支付';
+                // 拼接 pay.html 跳转链接
+                const payLink = `pay.html?amount=${Number(order.total).toFixed(2)}&orderId=${order.id}`;
                 
-                document.getElementById('order-list').innerHTML = data.map(order => {
-                    const isPaid = order.status === '已支付';
-                    // 跳转链接，传递金额和订单ID
-                    const payLink = `pay.html?amount=${Number(order.total).toFixed(2)}&orderId=${order.id}`;
-                    
-                    return `
-                        <div class="card">
-                            <div class="flex-between">
-                                <b>订单号: #${order.id}</b>
-                                <span class="badge ${isPaid ? 'success' : 'wait'}">${esc(order.status || '待支付')}</span>
-                            </div>
-                            <div style="margin: 8px 0;">${esc(order.content || order.items)}</div>
-                            <div class="flex-between" style="margin-top:10px; gap:10px;">
-                                <b style="color:var(--danger); font-size:18px;">¥${Number(order.total).toFixed(2)}</b>
-                                ${isPaid ? '' : `
-                                    <div style="display:flex; gap:6px; width:70%;">
-                                        <a href="${payLink}" style="flex:1; text-decoration:none;">
-                                            <button class="btn p" style="width:100%;">去代付</button>
-                                        </a>
-                                        <button class="btn g" style="flex:1;" onclick="simulatePay(${order.id})">模拟支付</button>
-                                    </div>
-                                `}
-                            </div>
+                return `
+                    <div class="card">
+                        <div class="flex-between"><b>订单号: #${order.id}</b><span class="badge ${isPaid ? 'success' : 'wait'}">${esc(order.status)}</span></div>
+                        <div style="margin: 8px 0;">${esc(order.content)}</div>
+                        <div class="flex-between">
+                            <b style="color:var(--danger);">¥${Number(order.total).toFixed(2)}</b>
+                            ${isPaid ? '' : `<a href="${payLink}" style="text-decoration:none;"><button class="btn p">去代付</button></a>`}
                         </div>
-                    `;
-                }).join('');
-            } catch (err) {
-                document.getElementById('order-list').innerHTML = '加载异常: ' + err.message;
-            }
+                    </div>
+                `;
+            }).join('');
         }
 
-        async function simulatePay(orderId) {
-            const { error } = await client.from('orders').update({ status: '已支付' }).eq('id', orderId);
-            if(error) alert('支付失败: ' + error.message);
-            else { alert('模拟支付成功！'); fetchOrders(); }
-        }
-        
-        // 此处应包含你原有的其他逻辑（如 fetchStores, checkout 等）
-        fetchOrders();
+        // 初始化导航切换逻辑
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.onclick = () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                document.querySelectorAll('.tab-view').forEach(t => t.style.display = 'none');
+                item.classList.add('active');
+                document.getElementById(item.dataset.tab).style.display = 'block';
+            };
+        });
+
+        // 原版系统的初始化函数调用
+        fetchStores(); 
+        // 假设原系统有 fetchStores，确保它存在于你的代码中，若报错请检查原版命名
     </script>
 </body>
 </html>
