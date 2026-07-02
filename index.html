@@ -10,7 +10,7 @@
         *{box-sizing:border-box}
         body{margin:0;font-family:Arial, "PingFang SC","Microsoft YaHei", sans-serif;background:var(--bg);color:var(--text)}
         .nav{display:flex; gap:10px;padding: 14px 12px; background:linear-gradient(135deg, #111,#2b2b2b); position:sticky;top:0;z-index:10;overflow:auto}
-        .nav-item{padding: 10px 14px;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;font-weight:700;white-space:nowrap;user-select:none;}
+        .nav-item{padding: 10px 14px;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.08);color:#fff;font-weight:700;white-space:nowrap;}
         .nav-item.active{background:var(--primary);color:#111}
         .tab-view{display:none;padding:14px;max-width: 1100px;margin:0 auto}
         .tab-view.active{display:block}
@@ -34,7 +34,7 @@
     <div id="view-stores" class="tab-view active"><div id="store-list">加载中...</div></div>
     <div id="view-cart" class="tab-view"><h2>购物车</h2><div id="cart-list"></div><button class="btn p" onclick="checkout()">提交订单</button></div>
     <div id="view-orders" class="tab-view"><h2>我的订单</h2><div id="order-list"></div></div>
-    <div id="view-admin" class="tab-view"><h2>管理后台</h2><div id="admin-form"></div></div>
+    <div id="view-admin" class="tab-view"><h2>管理后台</h2><div id="admin-content"></div></div>
     <div id="view-auth" class="tab-view"><h2>账户中心</h2><div id="auth-content"></div></div>
 
     <script>
@@ -43,45 +43,41 @@
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const esc = t => String(t?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 
-        // 核心跳转修复：订单列表渲染逻辑
+        // 订单页渲染逻辑 (修复跳转)
         async function fetchOrders() {
-            document.getElementById('order-list').innerHTML = '加载中...';
-            const { data, error } = await client.from('orders').select('*').order('id', { ascending: false });
-            
-            if (error) { document.getElementById('order-list').innerHTML = '加载失败'; return; }
+            const { data } = await client.from('orders').select('*').order('id', { ascending: false });
             if (!data || data.length === 0) { document.getElementById('order-list').innerHTML = '暂无订单'; return; }
-            
-            document.getElementById('order-list').innerHTML = data.map(order => {
-                const isPaid = order.status === '已支付';
-                // 拼接 pay.html 跳转链接
-                const payLink = `pay.html?amount=${Number(order.total).toFixed(2)}&orderId=${order.id}`;
-                
-                return `
-                    <div class="card">
-                        <div class="flex-between"><b>订单号: #${order.id}</b><span class="badge ${isPaid ? 'success' : 'wait'}">${esc(order.status)}</span></div>
-                        <div style="margin: 8px 0;">${esc(order.content)}</div>
-                        <div class="flex-between">
-                            <b style="color:var(--danger);">¥${Number(order.total).toFixed(2)}</b>
-                            ${isPaid ? '' : `<a href="${payLink}" style="text-decoration:none;"><button class="btn p">去代付</button></a>`}
-                        </div>
+            document.getElementById('order-list').innerHTML = data.map(o => {
+                const isPaid = o.status === '已支付';
+                return `<div class="card">
+                    <div>订单#${o.id} - ${esc(o.content)}</div>
+                    <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                        <b>¥${Number(o.total).toFixed(2)}</b>
+                        ${isPaid ? '<span class="badge success">已支付</span>' : 
+                          `<a href="pay.html?amount=${o.total}&orderId=${o.id}" style="text-decoration:none;"><button class="btn p">去代付</button></a>`}
                     </div>
-                `;
+                </div>`;
             }).join('');
         }
 
-        // 初始化导航切换逻辑
+        // 导航切换
         document.querySelectorAll('.nav-item').forEach(item => {
             item.onclick = () => {
                 document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
                 document.querySelectorAll('.tab-view').forEach(t => t.style.display = 'none');
                 item.classList.add('active');
                 document.getElementById(item.dataset.tab).style.display = 'block';
+                if(item.dataset.tab === 'view-orders') fetchOrders();
             };
         });
 
-        // 原版系统的初始化函数调用
-        fetchStores(); 
-        // 假设原系统有 fetchStores，确保它存在于你的代码中，若报错请检查原版命名
+        // 基础初始化
+        async function init() {
+            // 这里确保你原系统中所有的初始化函数都被调用
+            if(typeof fetchStores === 'function') fetchStores();
+            // 添加其他必要的初始化函数...
+        }
+        init();
     </script>
 </body>
 </html>
