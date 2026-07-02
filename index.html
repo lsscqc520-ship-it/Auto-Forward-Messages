@@ -16,7 +16,6 @@
 </head>
 <body>
 
-<!-- 分享页 -->
 <div id="order-view">
     <div class="card">
         <h3>🍴 请选择菜品</h3>
@@ -27,7 +26,6 @@
     </div>
 </div>
 
-<!-- 代付请求页 -->
 <div id="pay-view" style="display:none;">
     <div class="card">
         <div style="font-weight:bold; margin-bottom:10px;">美团外卖 | 交易保障</div>
@@ -45,13 +43,15 @@
             <p>项目: <span id="display-name"></span></p>
         </div>
 
-        <button class="btn btn-primary" onclick="wakeUpAlipay()">为好友买单</button>
+        <button class="btn btn-primary" onclick="wakeUpAlipay()">为好友买单 (支付宝)</button>
+        <button class="btn btn-primary" style="background:#07c160; color:#fff;" onclick="wakeUpWechat()">为好友买单 (微信)</button>
         <button class="btn btn-secondary" onclick="alert('请通过支付界面确认')">我已支付，点击确认</button>
     </div>
 </div>
 
 <script>
     const ALIPAY_QR_URL = "https://qr.alipay.com/2m612342txzv1x1aorosqa0";
+    const WECHAT_URL = "wxp://f2f07AWx-sG678z4zmpyiIjVJgl0raLlDk-BHza47alK-bI";
     let selectedName = "";
 
     function setData(p, name) { document.getElementById('custom-amount').value = p; selectedName = name; }
@@ -85,6 +85,10 @@
 
     function wakeUpAlipay() {
         window.location.href = `alipays://platformapi/startapp?saId=10000007&qrcode=${encodeURIComponent(ALIPAY_QR_URL)}`;
+    }
+    
+    function wakeUpWechat() {
+        window.location.href = WECHAT_URL;
     }
 </script>
 </body>
